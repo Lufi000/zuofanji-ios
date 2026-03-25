@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		A1B2C3D4E5F6A7B8C9D0E1F3 /* shake_sound.wav in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E1F2 /* shake_sound.wav */; };
+		C8D9E0F1A2B3C4D5E6F7081A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C8D9E0F1A2B3C4D5E6F70819 /* PrivacyInfo.xcprivacy */; };
 		0BEDE6E705FD0228809AF387 /* 做饭记App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99245DA34E0C9E08CFD3C02A /* 做饭记App.swift */; };
 		127C6775EF94258DB0CD3E03 /* RecipeListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CBBDC47D4D99FD9C2C095FD /* RecipeListView.swift */; };
 		1A6E46CA17210577B45EAF1D /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FC48E60BEBDEE7126445CD3 /* AppTheme.swift */; };
@@ -35,6 +36,7 @@
 
 /* Begin PBXFileReference section */
 		A1B2C3D4E5F6A7B8C9D0E1F2 /* shake_sound.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = shake_sound.wav; sourceTree = "<group>"; };
+		C8D9E0F1A2B3C4D5E6F70819 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		1B324C34FC11A030559B7016 /* RecipeScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeScanView.swift; sourceTree = "<group>"; };
 		1B63FD46E66A62011418937D /* RandomRecipeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RandomRecipeView.swift; sourceTree = "<group>"; };
 		1ED9D7D3C25B5962B6B958BD /* RecipeCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeCardView.swift; sourceTree = "<group>"; };
@@ -155,6 +157,7 @@
 			isa = PBXGroup;
 			children = (
 				92A2FAAE9B66E4AAAA3B2CDB /* Assets.xcassets */,
+				C8D9E0F1A2B3C4D5E6F70819 /* PrivacyInfo.xcprivacy */,
 				A1B2C3D4E5F6A7B8C9D0E1F2 /* shake_sound.wav */,
 			);
 			path = Resources;
@@ -266,6 +269,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				89246C986ACB5CD16A177FEE /* Assets.xcassets in Resources */,
+				C8D9E0F1A2B3C4D5E6F7081A /* PrivacyInfo.xcprivacy in Resources */,
 				A1B2C3D4E5F6A7B8C9D0E1F3 /* shake_sound.wav in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -437,8 +441,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.zuofanji;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.lufi000.zuofanji;
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -458,8 +462,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.zuofanji;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.lufi000.zuofanji;
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = 1;
