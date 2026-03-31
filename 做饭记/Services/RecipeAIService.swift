@@ -58,10 +58,9 @@ enum RecipeAIError: Error, LocalizedError {
 
 /// 调用阿里云通义千问视觉 API，识别菜品图片并返回菜谱建议。
 /// 图片仅在内存中处理，转为 base64 后随请求发送，不落盘。
-/// API Key 放在本地 `RecipeSecrets.swift`（由 `RecipeSecrets.swift.example` 复制），勿提交仓库；上架前建议改为自有代理。
+/// DashScope（千问）API Key 仅在服务端做饭记 BFF 的 `DASHSCOPE_API_KEY`；客户端只配 BFF 地址与 `X-App-Token`（与 cycle/MiniMax 无关）。
 final class RecipeAIService {
 
-    private static let baseURL = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
     private static let model = "qwen3-vl-plus"
 
     // MARK: - Public API
@@ -71,9 +70,10 @@ final class RecipeAIService {
     /// - Returns: 识别结果（所有字段均可能为空/空数组）
     /// - Throws: RecipeAIError
     func analyze(image: UIImage) async throws -> RecipeAISuggestion {
-        let apiKey = RecipeSecrets.dashScopeAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !apiKey.isEmpty else {
-            throw RecipeAIError.apiError("未配置 API Key：将 Services/RecipeSecrets.swift.example 复制为 RecipeSecrets.swift 并填入密钥")
+        let base = RecipeSecrets.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let token = RecipeSecrets.appToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !base.isEmpty, !token.isEmpty else {
+            throw RecipeAIError.apiError("未配置 BFF：将 Services/RecipeSecrets.swift.example 复制为 RecipeSecrets.swift 并填入 baseURL 与 appToken")
         }
 
         // 限制图片最大边长为 1024px，避免 base64 体积过大导致超时
@@ -84,7 +84,7 @@ final class RecipeAIService {
         let base64Image = imageData.base64EncodedString()
         print("[RecipeAI] Image size after resize: \(imageData.count / 1024)KB")
 
-        let request = try buildRequest(base64Image: base64Image, apiKey: apiKey)
+        let request = try buildRequest(base64Image: base64Image, baseURLString: base, appToken: token)
 
         let (data, response): (Data, URLResponse)
         do {
@@ -109,14 +109,14 @@ final class RecipeAIService {
 
     // MARK: - Private
 
-    private func buildRequest(base64Image: String, apiKey: String) throws -> URLRequest {
-        guard let url = URL(string: Self.baseURL) else {
-            throw RecipeAIError.apiError("Invalid API URL")
+    private func buildRequest(base64Image: String, baseURLString: String, appToken: String) throws -> URLRequest {
+        guard let url = URL(string: baseURLString) else {
+            throw RecipeAIError.apiError("Invalid BFF URL")
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue(appToken, forHTTPHeaderField: "X-App-Token")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 60
 
