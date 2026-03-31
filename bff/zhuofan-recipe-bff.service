@@ -1,0 +1,14 @@
+[Unit]
+Description=做饭记 / 吃啥 App — DashScope BFF 代理
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/zhuofan-recipe-bff/zhuofan-recipe-bff
+EnvironmentFile=/opt/zhuofan-recipe-bff/.env
+Restart=always
+RestartSec=3
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

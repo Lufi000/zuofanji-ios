@@ -1,0 +1,12 @@
+# 追加到 api.smallbeebee.com 的 server { ... } 内。
+# 做饭记 BFF：LISTEN_ADDR=:8082；进程内仅 DASHSCOPE_API_KEY + 做饭记专用 APP_TOKEN（与 cycle 的 MINIMAX/.env 分开）。
+
+location = /v1/recipe/chat/completions {
+    proxy_pass http://127.0.0.1:8082/v1/chat/completions;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 120s;
+}
