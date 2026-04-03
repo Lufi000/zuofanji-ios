@@ -37,6 +37,8 @@ enum RecipeAIError: Error, LocalizedError {
     case apiError(String)
     case parseError(String)
     case rateLimited
+    /// 本机按自然日统计的每日上限（与账号无关）
+    case dailyLimitExceeded
 
     var errorDescription: String? {
         switch self {
@@ -50,6 +52,8 @@ enum RecipeAIError: Error, LocalizedError {
             return "识别结果解析失败：\(msg)"
         case .rateLimited:
             return "请求过于频繁，请稍后再试"
+        case .dailyLimitExceeded:
+            return "AI 分析每天最多使用 \(RecipeAIUsageLimiter.maxPerDay) 次，请明天再试"
         }
     }
 }
@@ -70,6 +74,10 @@ final class RecipeAIService {
     /// - Returns: 识别结果（所有字段均可能为空/空数组）
     /// - Throws: RecipeAIError
     func analyze(image: UIImage) async throws -> RecipeAISuggestion {
+        guard RecipeAIUsageLimiter.canConsume() else {
+            throw RecipeAIError.dailyLimitExceeded
+        }
+
         let base = RecipeSecrets.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let token = RecipeSecrets.appToken.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !base.isEmpty, !token.isEmpty else {
@@ -104,7 +112,9 @@ final class RecipeAIService {
             }
         }
 
-        return try parseResponse(data: data)
+        let suggestion = try parseResponse(data: data)
+        RecipeAIUsageLimiter.recordSuccessfulConsumption()
+        return suggestion
     }
 
     // MARK: - Private
@@ -235,5 +245,46 @@ final class RecipeAIService {
         return renderer.image { _ in
             image.draw(in: CGRect(origin: .zero, size: newSize))
         }
+    }
+}
+
+// MARK: - Daily usage (per device, local calendar day)
+
+enum RecipeAIUsageLimiter {
+    /// 每日最多调用 AI 分析次数（本机存储，按用户设备自然日重置）
+    static let maxPerDay = 10
+
+    private static let defaults = UserDefaults.standard
+    private static let countKey = "recipeAI.dailyUsageCount"
+    private static let dayKey = "recipeAI.dailyUsageDay"
+
+    private static func todayString(in calendar: Calendar = .current) -> String {
+        let comps = calendar.dateComponents([.year, .month, .day], from: Date())
+        guard let y = comps.year, let m = comps.month, let d = comps.day else {
+            return ""
+        }
+        return String(format: "%04d-%02d-%02d", y, m, d)
+    }
+
+    static func canConsume() -> Bool {
+        usageCountForToday() < maxPerDay
+    }
+
+    static func usageCountForToday() -> Int {
+        let today = todayString()
+        guard defaults.string(forKey: dayKey) == today else { return 0 }
+        return defaults.integer(forKey: countKey)
+    }
+
+    static func recordSuccessfulConsumption() {
+        let today = todayString()
+        let count: Int
+        if defaults.string(forKey: dayKey) == today {
+            count = defaults.integer(forKey: countKey) + 1
+        } else {
+            count = 1
+        }
+        defaults.set(today, forKey: dayKey)
+        defaults.set(count, forKey: countKey)
     }
 }
