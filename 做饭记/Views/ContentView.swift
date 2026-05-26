@@ -10,10 +10,13 @@ import SwiftData
 struct ContentView: View {
 
     @State private var selectedTab: AppTab = .recipes
+    @State private var recipesResetToken = 0
     @State private var showAddSheet = false
     @State private var showCamera = false
     @State private var showAddRecipe = false
     @State private var showSettings = false
+    @State private var showSubscription = false
+    @State private var shouldOpenSubscriptionAfterScan = false
     @State private var capturedImageData: Data?
     @State private var showScan = false
     private let scanResult = ScanResultContainer()
@@ -36,6 +39,7 @@ struct ContentView: View {
                 )
                 .presentationDetents([.height(160)])
                 .presentationDragIndicator(.visible)
+                .presentationBackground(AppTheme.cardBackground)
             }
             .fullScreenCover(isPresented: $showCamera) {
                 CameraView(
@@ -70,27 +74,37 @@ struct ContentView: View {
                 } else {
                     capturedImageData = nil
                     scanResult.suggestion = nil
+                    scanResult.aiUnavailableMessage = nil
                     scanResult.cutoutImage = nil
                     scanResult.outlineImage = nil
                 }
                 scanResult.cancelled = false
+                if shouldOpenSubscriptionAfterScan {
+                    shouldOpenSubscriptionAfterScan = false
+                    showSubscription = true
+                }
             }) {
                 if let data = capturedImageData {
                     RecipeScanView(
                         imageData: data,
-                        resultContainer: scanResult
+                        resultContainer: scanResult,
+                        onOpenSubscription: {
+                            shouldOpenSubscriptionAfterScan = true
+                        }
                     )
                 }
             }
             .sheet(isPresented: $showAddRecipe, onDismiss: {
                 capturedImageData = nil
                 scanResult.suggestion = nil
+                scanResult.aiUnavailableMessage = nil
                 scanResult.cutoutImage = nil
                 scanResult.outlineImage = nil
             }) {
                 AddRecipeView(
                     initialImageData: capturedImageData,
                     initialSuggestion: scanResult.suggestion,
+                    initialAIUnavailableMessage: scanResult.aiUnavailableMessage,
                     initialCutoutImage: scanResult.cutoutImage,
                     initialOutlineImage: scanResult.outlineImage
                 )
@@ -105,6 +119,16 @@ struct ContentView: View {
                         }
                 }
             }
+            .sheet(isPresented: $showSubscription) {
+                NavigationStack {
+                    SubscriptionView()
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("完成") { showSubscription = false }
+                            }
+                        }
+                }
+            }
     }
 
     // MARK: - Tab View (版本分支)
@@ -112,52 +136,65 @@ struct ContentView: View {
     @ViewBuilder
     private var tabViewContent: some View {
         if #available(iOS 18.0, *) {
-            TabView(selection: $selectedTab) {
-                Tab("菜谱", systemImage: "book", value: AppTab.recipes) {
+            TabView(selection: tabSelection) {
+                Tab("菜谱", systemImage: "fork.knife", value: AppTab.recipes) {
                     RecipeListView(
+                        resetToken: recipesResetToken,
                         onOpenSettings: { showSettings = true },
                         onAddRecipe: { showAddSheet = true }
                     )
                 }
-                Tab("随机", systemImage: "shuffle", value: AppTab.random) {
+                Tab("随机", systemImage: "die.face.5.fill", value: AppTab.random) {
                     RandomRecipeTabView()
                 }
-                Tab("添加", systemImage: "plus", value: AppTab.add, role: .search) {
+                Tab("添加", systemImage: "plus.circle.fill", value: AppTab.add, role: .search) {
                     Color.clear
                 }
             }
             .tint(AppTheme.accent)
-            .onChange(of: selectedTab) { _, newTab in
-                if newTab == .add {
-                    selectedTab = .recipes
-                    showAddSheet = true
-                }
-            }
+            .toolbarBackground(AppTheme.cardBackground, for: .tabBar)
+            .toolbarBackground(.visible, for: .tabBar)
         } else {
-            TabView(selection: $selectedTab) {
+            TabView(selection: tabSelection) {
                 RecipeListView(
+                    resetToken: recipesResetToken,
                     onOpenSettings: { showSettings = true },
                     onAddRecipe: { showAddSheet = true }
                 )
-                .tabItem { Label("菜谱", systemImage: "book") }
+                .tabItem { Label("菜谱", systemImage: "fork.knife") }
                 .tag(AppTab.recipes)
 
                 RandomRecipeTabView()
-                    .tabItem { Label("随机", systemImage: "shuffle") }
+                    .tabItem { Label("随机", systemImage: "die.face.5.fill") }
                     .tag(AppTab.random)
 
                 Color.clear
-                    .tabItem { Label("添加", systemImage: "plus") }
+                    .tabItem { Label("添加", systemImage: "plus.circle.fill") }
                     .tag(AppTab.add)
             }
             .tint(AppTheme.accent)
-            .onChange(of: selectedTab) { _, newTab in
+            .toolbarBackground(AppTheme.cardBackground, for: .tabBar)
+            .toolbarBackground(.visible, for: .tabBar)
+        }
+    }
+
+    private var tabSelection: Binding<AppTab> {
+        Binding(
+            get: { selectedTab },
+            set: { newTab in
+                if newTab == .recipes {
+                    recipesResetToken += 1
+                }
+
                 if newTab == .add {
                     selectedTab = .recipes
+                    recipesResetToken += 1
                     showAddSheet = true
+                } else {
+                    selectedTab = newTab
                 }
             }
-        }
+        )
     }
 }
 
@@ -203,6 +240,7 @@ private struct AddSourceSheet: View {
             }
         }
         .foregroundStyle(AppTheme.titleText)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(AppTheme.cardBackground)
     }
 }

@@ -4,6 +4,7 @@ import UIKit
 /// class 是引用类型，RecipeScanView 和 ContentView 持有同一个实例，写入立即可见。
 final class ScanResultContainer {
     var suggestion: RecipeAISuggestion?
+    var aiUnavailableMessage: String?
     var cancelled = false
     /// 抠图结果（透明背景，与 AI 识别并行生成）
     var cutoutImage: UIImage?

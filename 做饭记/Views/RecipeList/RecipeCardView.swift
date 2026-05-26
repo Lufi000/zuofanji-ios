@@ -125,6 +125,7 @@ struct RecipeCardView: View {
 struct RecipeThumbnailView: View {
 
     let recipe: Recipe
+    private let infoSectionHeight: CGFloat = 68
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -134,12 +135,13 @@ struct RecipeThumbnailView: View {
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundStyle(AppTheme.titleText)
-                    .lineLimit(2)
+                    .lineLimit(2, reservesSpace: true)
                 Text(recipe.date, format: .dateTime.month().day())
                     .font(.caption2)
                     .foregroundStyle(AppTheme.bodyText)
             }
             .padding(8)
+            .frame(height: infoSectionHeight, alignment: .topLeading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(AppTheme.cardBackground)

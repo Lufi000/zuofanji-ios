@@ -115,11 +115,9 @@ struct RandomRecipeTabView: View {
 
                 tagsSection(recipe)
                 notesSection(recipe)
-                Spacer(minLength: 24)
-                shuffleButton
             }
             .padding(.horizontal, 16)
-            .padding(.bottom, 40)
+            .padding(.bottom, 24)
             .id(recipe.id)
             .transition(.asymmetric(
                 insertion: .scale(scale: 0.95).combined(with: .opacity),
@@ -137,6 +135,13 @@ struct RandomRecipeTabView: View {
                     }
                 }
         )
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            shuffleButton
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 12)
+                .background(AppTheme.background)
+        }
     }
 
     private var emptyState: some View {

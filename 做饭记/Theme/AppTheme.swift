@@ -14,6 +14,9 @@ enum AppTheme {
     /// 次要强调 — 复古红 #C06868
     static let accentRed = Color(hex: 0xC06868)
 
+    /// 添加动作 — 鼠尾草绿 #5F8A7A
+    static let addAction = Color(hex: 0x5F8A7A)
+
     // MARK: Backgrounds
 
     /// 主背景 — 奶油白

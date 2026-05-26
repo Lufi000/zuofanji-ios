@@ -27,7 +27,11 @@ final class AddRecipeViewModel {
     // MARK: AI State
 
     var isAILoading: Bool = false
+    var isSaving: Bool = false
     var aiError: String?
+    var shouldShowSubscriptionPrompt: Bool = false
+
+    private var originalRecipeName: String?
 
     // MARK: Validation
 
@@ -36,19 +40,28 @@ final class AddRecipeViewModel {
         imageData != nil
     }
 
+    /// 编辑模式下，菜名变化会触发原材料和做法的重新生成。
+    var shouldRefreshDetailsForRenamedRecipe: Bool {
+        hasRenamedRecipe
+    }
+
     // MARK: AI Action
 
     /// 调用 AI 识别当前图片，将结果填入表单（只覆盖空字段）
-    func analyzeImage() async {
+    func analyzeImage(subscriptionStore: SubscriptionStore) async {
         guard let data = imageData, let image = UIImage(data: data) else { return }
         isAILoading = true
         aiError = nil
+        shouldShowSubscriptionPrompt = false
         defer { isAILoading = false }
 
         do {
+            try subscriptionStore.validateAIRequestAccess()
             let suggestion = try await RecipeAIService().analyze(image: image)
+            subscriptionStore.recordSuccessfulAIRequest()
             applyAISuggestion(suggestion)
         } catch {
+            shouldShowSubscriptionPrompt = error is AISubscriptionAccessError
             aiError = (error as? RecipeAIError)?.errorDescription ?? error.localizedDescription
         }
     }
@@ -66,10 +79,28 @@ final class AddRecipeViewModel {
         if steps.isEmpty { steps = suggestion.steps }
     }
 
+    /// 用户在编辑模式手动改菜名后，用新菜名重新生成原材料和做法。
+    func refreshRecipeDetailsForRenamedRecipeIfNeeded(subscriptionStore: SubscriptionStore) async throws {
+        guard hasRenamedRecipe else { return }
+
+        try subscriptionStore.validateAIRequestAccess()
+        let suggestion = try await RecipeAIService().suggestRecipe(named: resolvedName)
+        subscriptionStore.recordSuccessfulAIRequest()
+        if !suggestion.ingredients.isEmpty {
+            ingredients = suggestion.ingredients
+        }
+        if !suggestion.steps.isEmpty {
+            steps = suggestion.steps
+        }
+        difficulty = suggestion.difficulty ?? difficulty
+        cuisine = suggestion.cuisine ?? cuisine
+        cookingTime = suggestion.cookingTime ?? cookingTime
+    }
+
     // MARK: CRUD Actions
 
     /// 保存新菜谱到 SwiftData
-    func save(in context: ModelContext) {
+    func save(in context: ModelContext) throws {
         let recipe = Recipe(
             name: resolvedName,
             date: date,
@@ -87,13 +118,16 @@ final class AddRecipeViewModel {
             try context.save()
             print("[Recipe] Saved: \(recipe.name), ingredients: \(recipe.ingredients.count), steps: \(recipe.steps.count)")
         } catch {
+            context.delete(recipe)
             print("[Recipe] Save failed: \(error)")
+            throw error
         }
     }
 
     /// 用已有菜谱填充表单（编辑模式）
     func populate(from recipe: Recipe) {
         name = recipe.name
+        originalRecipeName = recipe.name
         date = recipe.date
         imageData = recipe.imageData
         cutoutImageData = recipe.cutoutImageData
@@ -126,5 +160,10 @@ final class AddRecipeViewModel {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty { return trimmed }
         return "未命名 \(date.formatted(.dateTime.month(.wide).day().year()))"
+    }
+
+    private var hasRenamedRecipe: Bool {
+        guard let originalRecipeName else { return false }
+        return originalRecipeName.trimmingCharacters(in: .whitespacesAndNewlines) != resolvedName
     }
 }

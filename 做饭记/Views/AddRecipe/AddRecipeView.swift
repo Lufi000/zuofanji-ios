@@ -27,6 +27,8 @@ struct AddRecipeView: View {
     var recipeToEdit: Recipe?
     /// AI 预识别结果（从 RecipeScanView 传入）
     var initialSuggestion: RecipeAISuggestion?
+    /// AI 不可用时的非阻断提示（用户仍可手动填写）
+    var initialAIUnavailableMessage: String?
     /// 抠图结果（透明背景）
     var initialCutoutImage: UIImage?
     /// 贴纸描边轮廓图
@@ -35,9 +37,13 @@ struct AddRecipeView: View {
     @State private var viewModel = AddRecipeViewModel()
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var tagsExpanded = false
+    @State private var didCompleteSave = false
+    @State private var isShowingRecipeUpdateDialog = false
+    @State private var showSubscription = false
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var subscriptionStore: SubscriptionStore
 
     private var isEditing: Bool { recipeToEdit != nil }
 
@@ -46,6 +52,7 @@ struct AddRecipeView: View {
             ScrollView {
                 VStack(spacing: 0) {
                     photoHeroSection
+                    aiUnavailableNotice
                     formContent
                 }
             }
@@ -57,19 +64,44 @@ struct AddRecipeView: View {
                     Button("取消") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存") { save() }
-                        .fontWeight(.semibold)
-                        .disabled(!viewModel.isValid)
-                        .accessibilityHint("保存菜谱，需先添加照片")
+                    Button {
+                        saveButtonTapped()
+                    } label: {
+                        Text("保存")
+                    }
+                    .fontWeight(.semibold)
+                    .disabled(!viewModel.isValid || viewModel.isSaving || viewModel.isAILoading)
+                    .accessibilityHint("保存菜谱，需先添加照片")
                 }
             }
-            .alert("识别失败", isPresented: Binding(
+            .alert(viewModel.shouldShowSubscriptionPrompt ? "需要 Snap Recipe Plus" : "识别失败", isPresented: Binding(
                 get: { viewModel.aiError != nil },
                 set: { if !$0 { viewModel.aiError = nil } }
             )) {
+                if viewModel.shouldShowSubscriptionPrompt {
+                    Button("去订阅") {
+                        viewModel.aiError = nil
+                        showSubscription = true
+                    }
+                }
                 Button("好") { viewModel.aiError = nil }
             } message: {
                 Text(viewModel.aiError ?? "")
+            }
+            .sheet(isPresented: $showSubscription) {
+                NavigationStack {
+                    SubscriptionView()
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("完成") { showSubscription = false }
+                            }
+                        }
+                }
+            }
+            .overlay {
+                if isShowingRecipeUpdateDialog {
+                    recipeUpdateDialog
+                }
             }
             .onAppear {
                 if let recipeToEdit {
@@ -122,7 +154,7 @@ struct AddRecipeView: View {
             // 左下角：AI 识别按钮，仅有图片时显示
             if viewModel.imageData != nil {
                 Button {
-                    Task { await viewModel.analyzeImage() }
+                    Task { await viewModel.analyzeImage(subscriptionStore: subscriptionStore) }
                     tagsExpanded = true
                 } label: {
                     HStack(spacing: 6) {
@@ -202,6 +234,33 @@ struct AddRecipeView: View {
 
     // MARK: - Form Content
 
+    @ViewBuilder
+    private var aiUnavailableNotice: some View {
+        if initialAIUnavailableMessage != nil {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "sparkles")
+                    .font(.subheadline)
+                    .foregroundStyle(AppTheme.accent)
+                    .padding(.top, 2)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("AI 识别暂不可用")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(AppTheme.titleText)
+                    Text("可以继续手动填写菜谱信息，照片和保存功能不受影响。")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.bodyText.opacity(0.65))
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(12)
+            .background(AppTheme.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+        }
+    }
+
     private var formContent: some View {
         VStack(spacing: 16) {
             nameSection
@@ -260,8 +319,9 @@ struct AddRecipeView: View {
                 Button {
                     viewModel.ingredients.append("")
                 } label: {
-                    Image(systemName: "plus.circle")
-                        .foregroundStyle(AppTheme.bodyText)
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(AppTheme.addAction)
                 }
                 .accessibilityLabel("添加原材料")
             }
@@ -309,8 +369,9 @@ struct AddRecipeView: View {
                 Button {
                     viewModel.steps.append("")
                 } label: {
-                    Image(systemName: "plus.circle")
-                        .foregroundStyle(AppTheme.bodyText)
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(AppTheme.addAction)
                 }
                 .accessibilityLabel("添加步骤")
             }
@@ -427,14 +488,79 @@ struct AddRecipeView: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
+    private var recipeUpdateDialog: some View {
+        ZStack {
+            Color.black.opacity(0.25)
+                .ignoresSafeArea()
+
+            VStack(spacing: 14) {
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .tint(AppTheme.bodyText)
+
+                VStack(spacing: 6) {
+                    Text("正在更新菜谱")
+                        .font(.headline)
+                        .foregroundStyle(AppTheme.bodyText)
+                    Text("正在根据新的菜名更新原材料和做法…")
+                        .font(.subheadline)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(AppTheme.bodyText.opacity(0.7))
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 22)
+            .frame(maxWidth: 280)
+            .background(AppTheme.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .shadow(color: .black.opacity(0.12), radius: 18, y: 8)
+        }
+    }
+
     // MARK: - Actions
 
-    private func save() {
-        if let recipeToEdit {
-            viewModel.update(recipeToEdit)
-        } else {
-            viewModel.save(in: modelContext)
+    private func saveButtonTapped() {
+        guard viewModel.isValid,
+              !viewModel.isSaving,
+              !viewModel.isAILoading,
+              !didCompleteSave else {
+            return
         }
+
+        viewModel.isSaving = true
+        isShowingRecipeUpdateDialog = isEditing && viewModel.shouldRefreshDetailsForRenamedRecipe
+        Task { await save() }
+    }
+
+    private func save() async {
+        viewModel.aiError = nil
+        defer {
+            viewModel.isSaving = false
+            isShowingRecipeUpdateDialog = false
+        }
+
+        if let recipeToEdit {
+            do {
+                try await viewModel.refreshRecipeDetailsForRenamedRecipeIfNeeded(subscriptionStore: subscriptionStore)
+            } catch {
+                print("[Recipe] Skipped AI detail refresh before saving: \(error.localizedDescription)")
+            }
+            viewModel.update(recipeToEdit)
+            do {
+                try modelContext.save()
+            } catch {
+                viewModel.aiError = "保存失败：\(error.localizedDescription)"
+                return
+            }
+        } else {
+            do {
+                try viewModel.save(in: modelContext)
+            } catch {
+                viewModel.aiError = "保存失败：\(error.localizedDescription)"
+                return
+            }
+        }
+        didCompleteSave = true
         dismiss()
     }
 

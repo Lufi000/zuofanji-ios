@@ -15,20 +15,20 @@ struct RecipeDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                heroImage
-                infoSection
-                tagsSection
+            VStack(alignment: .leading, spacing: 16) {
+                headerSection
                 ingredientsSection
                 stepsSection
             }
             .padding(.horizontal, 16)
-            .padding(.top, 8)
+            .padding(.top, 16)
             .padding(.bottom, 32)
         }
         .background(AppTheme.background)
-        .navigationTitle(recipe.name)
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(AppTheme.background, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -61,29 +61,60 @@ struct RecipeDetailView: View {
 
     // MARK: - Subviews
 
-    /// 顶部大图，按原始比例完整显示，不裁剪。
+    /// 顶部紧凑信息区：小图只作为识别入口，详情阅读重点留给材料和做法。
+    private var headerSection: some View {
+        HStack(alignment: .top, spacing: 12) {
+            dishThumbnail
+                .frame(width: 104, height: 104)
+
+            VStack(alignment: .leading, spacing: 8) {
+                infoSection
+                tagsSection
+            }
+            .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
+        }
+    }
+
+    /// 菜品小方图，统一比例避免详情页首屏被奇怪的原图比例撑开。
     @ViewBuilder
-    private var heroImage: some View {
-        if let data = recipe.imageData, let uiImage = UIImage(data: data) {
+    private var dishThumbnail: some View {
+        if let cutoutData = recipe.cutoutImageData, let cutoutImage = UIImage(data: cutoutData) {
+            Image(uiImage: cutoutImage)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 104, height: 104)
+                .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
+        } else if let uiImage = dishDisplayImage {
             Image(uiImage: uiImage)
                 .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(maxWidth: .infinity)
+                .scaledToFit()
+                .frame(width: 104, height: 104)
+                .background(AppTheme.cardBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
         } else {
             RoundedRectangle(cornerRadius: 12)
                 .fill(AppTheme.placeholder)
-                .aspectRatio(4/3, contentMode: .fit)
+                .frame(width: 104, height: 104)
                 .overlay {
-                    VStack(spacing: 8) {
+                    VStack(spacing: 6) {
                         Image(systemName: "fork.knife")
-                            .font(.largeTitle)
+                            .font(.title2)
                         Text("暂无照片")
-                            .font(.subheadline)
+                            .font(.caption)
                     }
                     .foregroundStyle(AppTheme.bodyText.opacity(0.5))
                 }
         }
+    }
+
+    private var dishDisplayImage: UIImage? {
+        if let cutoutData = recipe.cutoutImageData, let cutoutImage = UIImage(data: cutoutData) {
+            return cutoutImage
+        }
+        if let data = recipe.imageData, let image = UIImage(data: data) {
+            return image
+        }
+        return nil
     }
 
     /// 菜名 + 日期
@@ -93,6 +124,7 @@ struct RecipeDetailView: View {
                 .font(.title2)
                 .fontWeight(.bold)
                 .foregroundStyle(AppTheme.titleText)
+                .lineLimit(2)
 
             Text(recipe.date, format: .dateTime.year().month().day().weekday())
                 .font(.subheadline)
@@ -105,30 +137,42 @@ struct RecipeDetailView: View {
     private var tagsSection: some View {
         let hasTags = recipe.difficulty != nil || recipe.cuisine != nil || recipe.cookingTime != nil
         if hasTags {
-            HStack(spacing: 8) {
-                if let d = recipe.difficulty {
-                    TagChipView.difficulty(d)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    tagChips
                 }
-                if let c = recipe.cuisine {
-                    TagChipView.cuisine(c)
-                }
-                if let t = recipe.cookingTime {
-                    TagChipView.cookingTime(t)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    tagChips
                 }
             }
         }
     }
 
-    /// 原材料列表
     @ViewBuilder
-    private var ingredientsSection: some View {
-        if !recipe.ingredients.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("原材料")
-                    .font(.headline)
-                    .foregroundStyle(AppTheme.titleText)
+    private var tagChips: some View {
+        if let d = recipe.difficulty {
+            TagChipView.difficulty(d)
+        }
+        if let c = recipe.cuisine {
+            TagChipView.cuisine(c)
+        }
+        if let t = recipe.cookingTime {
+            TagChipView.cookingTime(t)
+        }
+    }
 
-                VStack(alignment: .leading, spacing: 6) {
+    /// 原材料列表
+    private var ingredientsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("原材料")
+                .font(.headline)
+                .foregroundStyle(AppTheme.titleText)
+
+            if recipe.ingredients.isEmpty {
+                emptySectionButton(icon: "carrot", message: "还没有填写原材料")
+            } else {
+                LazyVGrid(columns: ingredientColumns, alignment: .leading, spacing: 6) {
                     ForEach(recipe.ingredients, id: \.self) { item in
                         HStack(alignment: .top, spacing: 8) {
                             Circle()
@@ -142,23 +186,31 @@ struct RecipeDetailView: View {
                         }
                     }
                 }
-                .padding(12)
+                .padding(10)
                 .background(AppTheme.cardBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
     }
 
-    /// 做法步骤
-    @ViewBuilder
-    private var stepsSection: some View {
-        if !recipe.steps.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("做法")
-                    .font(.headline)
-                    .foregroundStyle(AppTheme.titleText)
+    private var ingredientColumns: [GridItem] {
+        [
+            GridItem(.flexible(), alignment: .topLeading),
+            GridItem(.flexible(), alignment: .topLeading)
+        ]
+    }
 
-                VStack(alignment: .leading, spacing: 8) {
+    /// 做法步骤
+    private var stepsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("做法")
+                .font(.headline)
+                .foregroundStyle(AppTheme.titleText)
+
+            if recipe.steps.isEmpty {
+                emptySectionButton(icon: "list.bullet.clipboard", message: "还没有填写做法")
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
                     ForEach(recipe.steps.indices, id: \.self) { index in
                         HStack(alignment: .top, spacing: 12) {
                             Text("\(index + 1)")
@@ -174,13 +226,38 @@ struct RecipeDetailView: View {
                                 .foregroundStyle(AppTheme.bodyText)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .padding(12)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
                         .background(AppTheme.cardBackground)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                 }
             }
         }
+    }
+
+    private func emptySectionButton(icon: String, message: String) -> some View {
+        Button {
+            showEditSheet = true
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.subheadline)
+                Text(message)
+                    .font(.subheadline)
+                Spacer(minLength: 0)
+                Image(systemName: "pencil")
+                    .font(.caption)
+            }
+            .foregroundStyle(AppTheme.bodyText.opacity(0.6))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 14)
+            .background(AppTheme.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("双击编辑菜谱")
     }
 
     // MARK: - Actions

@@ -37,8 +37,6 @@ enum RecipeAIError: Error, LocalizedError {
     case apiError(String)
     case parseError(String)
     case rateLimited
-    /// 本机按自然日统计的每日上限（与账号无关）
-    case dailyLimitExceeded
 
     var errorDescription: String? {
         switch self {
@@ -52,8 +50,6 @@ enum RecipeAIError: Error, LocalizedError {
             return "识别结果解析失败：\(msg)"
         case .rateLimited:
             return "请求过于频繁，请稍后再试"
-        case .dailyLimitExceeded:
-            return "AI 分析每天最多使用 \(RecipeAIUsageLimiter.maxPerDay) 次，请明天再试"
         }
     }
 }
@@ -74,16 +70,6 @@ final class RecipeAIService {
     /// - Returns: 识别结果（所有字段均可能为空/空数组）
     /// - Throws: RecipeAIError
     func analyze(image: UIImage) async throws -> RecipeAISuggestion {
-        guard RecipeAIUsageLimiter.canConsume() else {
-            throw RecipeAIError.dailyLimitExceeded
-        }
-
-        let base = RecipeSecrets.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        let token = RecipeSecrets.appToken.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !base.isEmpty, !token.isEmpty else {
-            throw RecipeAIError.apiError("未配置 BFF：将 Services/RecipeSecrets.swift.example 复制为 RecipeSecrets.swift 并填入 baseURL 与 appToken")
-        }
-
         // 限制图片最大边长为 1024px，避免 base64 体积过大导致超时
         let resized = resizeIfNeeded(image, maxDimension: 1024)
         guard let imageData = resized.jpegData(compressionQuality: 0.6) else {
@@ -92,9 +78,32 @@ final class RecipeAIService {
         let base64Image = imageData.base64EncodedString()
         print("[RecipeAI] Image size after resize: \(imageData.count / 1024)KB")
 
-        let request = try buildRequest(base64Image: base64Image, baseURLString: base, appToken: token)
+        let request = try buildImageRequest(base64Image: base64Image)
+        let suggestion = try await send(request: request)
+        return suggestion
+    }
 
-        let (data, response): (Data, URLResponse)
+    /// 根据用户手动修正后的菜名，重新生成匹配的原材料与做法。
+    /// - Parameter recipeName: 用户确认的菜名
+    /// - Returns: 菜谱建议（重点使用 ingredients / steps）
+    /// - Throws: RecipeAIError
+    func suggestRecipe(named recipeName: String) async throws -> RecipeAISuggestion {
+        let trimmedName = recipeName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            return RecipeAISuggestion()
+        }
+
+        let request = try buildNameRequest(recipeName: trimmedName)
+        let suggestion = try await send(request: request)
+        return suggestion
+    }
+
+    // MARK: - Private
+
+    private func send(request: URLRequest) async throws -> RecipeAISuggestion {
+        let data: Data
+        let response: URLResponse
+
         do {
             (data, response) = try await URLSession.shared.data(for: request)
         } catch {
@@ -113,22 +122,29 @@ final class RecipeAIService {
         }
 
         let suggestion = try parseResponse(data: data)
-        RecipeAIUsageLimiter.recordSuccessfulConsumption()
         return suggestion
     }
 
-    // MARK: - Private
-
-    private func buildRequest(base64Image: String, baseURLString: String, appToken: String) throws -> URLRequest {
-        guard let url = URL(string: baseURLString) else {
+    private func baseRequest() throws -> URLRequest {
+        let base = RecipeSecrets.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let token = RecipeSecrets.appToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !base.isEmpty, !token.isEmpty else {
+            throw RecipeAIError.apiError("未配置 BFF：将 Services/RecipeSecrets.swift.example 复制为 RecipeSecrets.swift 并填入 baseURL 与 appToken")
+        }
+        guard let url = URL(string: base) else {
             throw RecipeAIError.apiError("Invalid BFF URL")
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue(appToken, forHTTPHeaderField: "X-App-Token")
+        request.setValue(token, forHTTPHeaderField: "X-App-Token")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 60
+        return request
+    }
+
+    private func buildImageRequest(base64Image: String) throws -> URLRequest {
+        var request = try baseRequest()
 
         let cuisineOptions = Cuisine.allCases.map { $0.rawValue }.joined(separator: " | ")
         let difficultyOptions = Difficulty.allCases.map { $0.rawValue }.joined(separator: " | ")
@@ -163,6 +179,41 @@ final class RecipeAIService {
                             "text": prompt
                         ]
                     ]
+                ]
+            ]
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        return request
+    }
+
+    private func buildNameRequest(recipeName: String) throws -> URLRequest {
+        var request = try baseRequest()
+
+        let cuisineOptions = Cuisine.allCases.map { $0.rawValue }.joined(separator: " | ")
+        let difficultyOptions = Difficulty.allCases.map { $0.rawValue }.joined(separator: " | ")
+        let cookingTimeOptions = CookingTime.allCases.map { $0.rawValue }.joined(separator: " | ")
+
+        let prompt = """
+        用户手动确认这道菜的菜名是「\(recipeName)」。请根据这个菜名重新生成更匹配的菜谱信息，以 JSON 格式返回以下字段：
+        - name: 使用用户确认的菜名，必须是「\(recipeName)」
+        - difficulty: 难度，必须是以下之一：\(difficultyOptions)
+        - cuisine: 菜系，必须是以下之一：\(cuisineOptions)
+        - cookingTime: 烹饪时长，必须是以下之一：\(cookingTimeOptions)
+        - ingredients: 主要原材料列表（字符串数组，每条包含食材名和用量，如 "鸡胸肉 300g"）
+        - steps: 做法步骤列表（字符串数组，有序，每条为一个步骤）
+
+        只返回 JSON，不要其他文字，不要 markdown 代码块。
+        示例格式：
+        {"name":"\(recipeName)","difficulty":"中等","cuisine":"川菜","cookingTime":"30分钟","ingredients":["鸡胸肉 300g","花生 50g"],"steps":["鸡肉切丁腌制10分钟","热锅炒香干辣椒","加入鸡丁翻炒至变色","加酱汁翻炒出锅"]}
+        """
+
+        let body: [String: Any] = [
+            "model": Self.model,
+            "messages": [
+                [
+                    "role": "user",
+                    "content": prompt
                 ]
             ]
         ]
@@ -245,46 +296,5 @@ final class RecipeAIService {
         return renderer.image { _ in
             image.draw(in: CGRect(origin: .zero, size: newSize))
         }
-    }
-}
-
-// MARK: - Daily usage (per device, local calendar day)
-
-enum RecipeAIUsageLimiter {
-    /// 每日最多调用 AI 分析次数（本机存储，按用户设备自然日重置）
-    static let maxPerDay = 10
-
-    private static let defaults = UserDefaults.standard
-    private static let countKey = "recipeAI.dailyUsageCount"
-    private static let dayKey = "recipeAI.dailyUsageDay"
-
-    private static func todayString(in calendar: Calendar = .current) -> String {
-        let comps = calendar.dateComponents([.year, .month, .day], from: Date())
-        guard let y = comps.year, let m = comps.month, let d = comps.day else {
-            return ""
-        }
-        return String(format: "%04d-%02d-%02d", y, m, d)
-    }
-
-    static func canConsume() -> Bool {
-        usageCountForToday() < maxPerDay
-    }
-
-    static func usageCountForToday() -> Int {
-        let today = todayString()
-        guard defaults.string(forKey: dayKey) == today else { return 0 }
-        return defaults.integer(forKey: countKey)
-    }
-
-    static func recordSuccessfulConsumption() {
-        let today = todayString()
-        let count: Int
-        if defaults.string(forKey: dayKey) == today {
-            count = defaults.integer(forKey: countKey) + 1
-        } else {
-            count = 1
-        }
-        defaults.set(today, forKey: dayKey)
-        defaults.set(count, forKey: countKey)
     }
 }
