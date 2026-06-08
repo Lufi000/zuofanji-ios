@@ -1,4 +1,4 @@
-# 做饭记 · iOS 无障碍自查与 App Store 上架填写说明
+# 菜脯 · iOS 无障碍自查与 App Store 上架填写说明
 
 ## 一、App Store Connect 上架需填写的无障碍项
 

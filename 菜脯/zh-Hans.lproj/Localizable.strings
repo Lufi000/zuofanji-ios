@@ -1,0 +1,4 @@
+/*
+ Chinese UI strings use their Chinese source keys as the displayed values.
+ Keeping this table present prevents dynamic lookups from falling back to English.
+*/

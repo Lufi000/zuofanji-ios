@@ -1,4 +1,4 @@
-name: 做饭记
+name: 菜脯
 options:
   bundleIdPrefix: com.lufi000
   deploymentTarget:
@@ -6,23 +6,26 @@ options:
   generateEmptyDirectories: true
 
 targets:
-  做饭记:
+  菜脯:
     type: application
     platform: iOS
     sources:
-      - path: 做饭记
+      - path: 菜脯
         excludes:
           - "**/*.plist"
           - "**/*.swift.example"
     info:
-      path: 做饭记/Info.plist
+      path: 菜脯/Info.plist
       properties:
-        CFBundleDisplayName: "菜脯"
+        CFBundleDisplayName: "Snap Pickle"
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSCameraUsageDescription: "需要访问相机以拍摄菜品照片；可选用于识别菜谱信息。"
         NSPhotoLibraryUsageDescription: "需要访问相册以选择菜品照片；可选用于识别菜谱信息。"
+        UIAppFonts:
+          - MaShanZheng-Regular.ttf
+          - PlaywriteGBSGuides-Regular.ttf
         ITSAppUsesNonExemptEncryption: false
         UIUserInterfaceStyle: Light
     settings:

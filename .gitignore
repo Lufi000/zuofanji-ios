@@ -1,15 +1,21 @@
 # Local API secrets (never commit)
 做饭记/Services/RecipeSecrets.swift
+菜脯/Services/RecipeSecrets.swift
 
 # BFF env on server
 bff/.env
 bff/zhuofan-recipe-bff
 bff/zhuofan-recipe-bff-linux-amd64
+bff/caipu-recipe-bff
+bff/caipu-recipe-bff-linux-amd64
+bff/.gocache/
 
 # Xcode
 xcuserdata/
 *.xcuserstate
 DerivedData/
+.derivedData/
+.derivedData-device/
 build/
 *.hmap
 *.ipa
@@ -22,6 +28,9 @@ build/
 
 # macOS
 .DS_Store
+
+# Local agent settings
+.claude/
 
 # CocoaPods (if added later)
 Pods/

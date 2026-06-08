@@ -29,12 +29,14 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/chat/completions", proxy.HandleCompletions)
+	mux.HandleFunc("/legal/privacy", handleLegalPage(privacyPolicyHTML))
+	mux.HandleFunc("/legal/terms", handleLegalPage(termsOfUseHTML))
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"status":"ok"}`))
 	})
 
-	log.Printf("Zhuofan recipe BFF (DashScope) listening on %s", addr)
+	log.Printf("Caipu recipe BFF (DashScope) listening on %s", addr)
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatal(err)
 	}

@@ -1,0 +1,3 @@
+"CFBundleDisplayName" = "菜脯";
+"NSCameraUsageDescription" = "需要访问相机以拍摄菜品照片；可选用于识别菜谱信息。";
+"NSPhotoLibraryUsageDescription" = "需要访问相册以选择菜品照片；可选用于识别菜谱信息。";
