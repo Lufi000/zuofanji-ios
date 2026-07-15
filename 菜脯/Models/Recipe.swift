@@ -28,6 +28,9 @@ final class Recipe {
     /// 做法步骤列表，有序
     var steps: [String]
 
+    /// 记录类型：普通菜谱 / 宝宝餐 / 宝宝日常 / 普通手帐。
+    var recordKindRawValue: String?
+
     // MARK: Tags（用 rawValue 存储，便于 Predicate 筛选）
 
     var difficultyRawValue: String?
@@ -61,6 +64,18 @@ final class Recipe {
         set { cookingTimeRawValue = newValue?.rawValue }
     }
 
+    @Transient
+    var recordKind: RecipeRecordKind {
+        get {
+            if let recordKindRawValue,
+               let kind = RecipeRecordKind(rawValue: recordKindRawValue) {
+                return kind
+            }
+            return ingredients.isEmpty && steps.isEmpty ? .scrapbook : .foodRecipe
+        }
+        set { recordKindRawValue = newValue.rawValue }
+    }
+
     // MARK: Init
 
     init(
@@ -71,6 +86,7 @@ final class Recipe {
         notes: String = "",
         ingredients: [String] = [],
         steps: [String] = [],
+        recordKind: RecipeRecordKind = .foodRecipe,
         difficulty: Difficulty? = nil,
         cuisine: Cuisine? = nil,
         cookingTime: CookingTime? = nil
@@ -82,6 +98,7 @@ final class Recipe {
         self.notes = notes
         self.ingredients = ingredients
         self.steps = steps
+        self.recordKindRawValue = recordKind.rawValue
         self.difficultyRawValue = difficulty?.rawValue
         self.cuisineRawValue = cuisine?.rawValue
         self.cookingTimeRawValue = cookingTime?.rawValue
@@ -105,7 +122,9 @@ final class Recipe {
 
     func setCurrentContentLanguage(_ language: AppLanguage) {
         sourceLanguageRawValue = language.rawValue
-        setLocalizedContent(originalContent, for: language)
+        localizedContentsData = try? JSONEncoder().encode([
+            language.rawValue: originalContent
+        ])
     }
 
     func setLocalizedContent(_ content: RecipeLocalizedContent, for language: AppLanguage) {
@@ -118,6 +137,7 @@ final class Recipe {
         localizedContents[language.rawValue] != nil
     }
 
+    @Transient
     var sourceLanguage: AppLanguage {
         if let rawValue = sourceLanguageRawValue,
            let language = AppLanguage(rawValue: rawValue) {
@@ -126,6 +146,7 @@ final class Recipe {
         return RecipeLocalizedContent.inferLanguage(from: originalContent)
     }
 
+    @Transient
     private var originalContent: RecipeLocalizedContent {
         RecipeLocalizedContent(
             name: name,
@@ -135,6 +156,7 @@ final class Recipe {
         )
     }
 
+    @Transient
     private var localizedContents: [String: RecipeLocalizedContent] {
         guard let localizedContentsData,
               let contents = try? JSONDecoder().decode(
@@ -147,6 +169,36 @@ final class Recipe {
     }
 }
 
+enum RecipeRecordKind: String, CaseIterable, Identifiable, Codable, Hashable {
+    case foodRecipe
+    case babyMeal
+    case babyDaily
+    case scrapbook
+
+    var id: String { rawValue }
+
+    var localizedName: String {
+        switch self {
+        case .foodRecipe:
+            return AppLocalization.text("菜谱")
+        case .babyMeal:
+            return AppLocalization.text("宝宝餐")
+        case .babyDaily:
+            return AppLocalization.text("宝宝日常")
+        case .scrapbook:
+            return AppLocalization.text("生活手帐")
+        }
+    }
+
+    var isFoodRelated: Bool {
+        self == .foodRecipe || self == .babyMeal
+    }
+
+    var isBabyRecord: Bool {
+        self == .babyMeal || self == .babyDaily
+    }
+}
+
 struct RecipeLocalizedContent: Codable {
     let name: String
     let notes: String
@@ -155,10 +207,15 @@ struct RecipeLocalizedContent: Codable {
 
     static func inferLanguage(from content: RecipeLocalizedContent) -> AppLanguage {
         let text = ([content.name, content.notes] + content.ingredients + content.steps).joined()
-        if text.range(of: "[ぁ-んァ-ン]", options: .regularExpression) != nil {
+        let scalars = text.unicodeScalars
+        if scalars.contains(where: {
+            (0x3040...0x30FF).contains($0.value)
+        }) {
             return .japanese
         }
-        if text.range(of: "[\\u{4E00}-\\u{9FFF}]", options: .regularExpression) != nil {
+        if scalars.contains(where: {
+            (0x4E00...0x9FFF).contains($0.value)
+        }) {
             return .chinese
         }
         return .english

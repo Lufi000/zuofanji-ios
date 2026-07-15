@@ -23,9 +23,75 @@ private enum RecipeListEditor: String, Identifiable {
     var title: String {
         switch self {
         case .ingredients:
-            return "原材料"
+            return "食材"
         case .steps:
-            return "做法"
+            return "步骤"
+        }
+    }
+}
+
+private struct DescriptionVariantOptionCard: View {
+    let variant: DescriptionVariant
+    let isSelected: Bool
+    var onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 4) {
+                    Image(systemName: iconName)
+                        .font(.caption.weight(.semibold))
+                    Text(variant.title)
+                        .font(.caption.weight(.semibold))
+                }
+                .foregroundStyle(titleColor)
+
+                Text(variant.text)
+                    .font(.caption2)
+                    .foregroundStyle(bodyColor)
+                    .lineLimit(3)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(10)
+            .frame(width: 156, alignment: .topLeading)
+            .frame(minHeight: 92, alignment: .topLeading)
+            .background(backgroundColor)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(borderColor, lineWidth: 1)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(variant.title)
+        .accessibilityHint("选择这一版文案")
+    }
+
+    private var titleColor: Color {
+        isSelected ? .white : AppTheme.titleText
+    }
+
+    private var bodyColor: Color {
+        isSelected ? .white.opacity(0.82) : AppTheme.bodyText
+    }
+
+    private var backgroundColor: Color {
+        isSelected ? AppTheme.accent : AppTheme.cardBackground
+    }
+
+    private var borderColor: Color {
+        isSelected ? AppTheme.accent.opacity(0.85) : AppTheme.bodyText.opacity(0.14)
+    }
+
+    private var iconName: String {
+        switch variant.style {
+        case .journal:
+            return "text.book.closed"
+        case .story:
+            return "text.quote"
+        case .poem:
+            return "sparkles"
         }
     }
 }
@@ -49,11 +115,15 @@ struct AddRecipeView: View {
     var initialCutoutImage: UIImage?
     /// 贴纸描边轮廓图
     var initialOutlineImage: UIImage?
+    /// 扫描页共享状态：抠图完成后先进入详情页，AI 结果稍后写入这里。
+    var scanResultContainer: ScanResultContainer?
 
     @State private var viewModel = AddRecipeViewModel()
     @State private var selectedPhoto: PhotosPickerItem?
-    @State private var tagsExpanded = false
     @State private var didCompleteSave = false
+    @State private var didInitializeForm = false
+    @State private var appliedSuggestionVersion = 0
+    @State private var appliedImageVersion = 0
     @State private var isShowingRecipeUpdateDialog = false
     @State private var showSubscription = false
     @State private var listEditor: RecipeListEditor?
@@ -64,6 +134,15 @@ struct AddRecipeView: View {
     @EnvironmentObject private var subscriptionStore: SubscriptionStore
 
     private var isEditing: Bool { recipeToEdit != nil }
+    private var isRecognizing: Bool {
+        viewModel.isAILoading || (scanResultContainer?.isAIAnalyzing ?? false)
+    }
+    private var currentAIUnavailableMessage: String? {
+        scanResultContainer?.aiUnavailableMessage ?? initialAIUnavailableMessage
+    }
+    private var currentOutlineImage: UIImage? {
+        scanResultContainer?.outlineImage ?? initialOutlineImage
+    }
 
     var body: some View {
         NavigationStack {
@@ -75,7 +154,7 @@ struct AddRecipeView: View {
                 }
             }
             .background(AppTheme.background)
-            .navigationTitle(AppLocalization.text(isEditing ? "编辑菜谱" : "新建"))
+            .navigationTitle(AppLocalization.text(isEditing ? "编辑" : "新建"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -88,8 +167,8 @@ struct AddRecipeView: View {
                         Text("保存")
                     }
                     .fontWeight(.semibold)
-                    .disabled(!viewModel.isValid || viewModel.isSaving || viewModel.isAILoading)
-                    .accessibilityHint("保存菜谱，需先添加照片")
+                    .disabled(!viewModel.isValid || viewModel.isSaving || isRecognizing)
+                    .accessibilityHint("保存这张照片和记录，需先添加照片")
                 }
             }
             .alert(AppLocalization.text(viewModel.shouldShowSubscriptionPrompt ? "需要 菜脯 Plus" : "识别失败"), isPresented: Binding(
@@ -105,6 +184,23 @@ struct AddRecipeView: View {
                 Button("好") { viewModel.aiError = nil }
             } message: {
                 Text(viewModel.aiError ?? "")
+            }
+            .confirmationDialog(
+                "替换当前文字？",
+                isPresented: Binding(
+                    get: { viewModel.shouldConfirmDescriptionReplacement },
+                    set: { if !$0 { viewModel.cancelPendingDescriptionVariantReplacement() } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("替换当前文字") {
+                    viewModel.confirmPendingDescriptionVariantReplacement()
+                }
+                Button("取消", role: .cancel) {
+                    viewModel.cancelPendingDescriptionVariantReplacement()
+                }
+            } message: {
+                Text("你已经修改过这段描述，切换版本会用新文案覆盖当前文字。")
             }
             .sheet(isPresented: $showSubscription) {
                 NavigationStack {
@@ -125,18 +221,13 @@ struct AddRecipeView: View {
                 }
             }
             .onAppear {
-                if let recipeToEdit {
-                    viewModel.populate(from: recipeToEdit)
-                } else if let initialImageData {
-                    viewModel.imageData = initialImageData
-                    viewModel.cutoutImageData = initialCutoutImage?.pngData()
-                    print("[AddRecipeView] onAppear: initialSuggestion=\(initialSuggestion?.name ?? "nil"), ingredients=\(initialSuggestion?.ingredients.count ?? -1)")
-                    if let suggestion = initialSuggestion {
-                        viewModel.applyAISuggestion(suggestion)
-                        tagsExpanded = true
-                        print("[AddRecipeView] Applied suggestion: name=\(viewModel.name), ingredients=\(viewModel.ingredients.count)")
-                    }
-                }
+                initializeFormIfNeeded()
+            }
+            .onChange(of: scanResultContainer?.imageVersion ?? 0) { _, _ in
+                applyScanImagesIfNeeded()
+            }
+            .onChange(of: scanResultContainer?.suggestionVersion ?? 0) { _, _ in
+                applyScanSuggestionIfNeeded()
             }
         }
     }
@@ -176,18 +267,14 @@ struct AddRecipeView: View {
             if viewModel.imageData != nil {
                 Button {
                     Task { await viewModel.analyzeImage(subscriptionStore: subscriptionStore) }
-                    tagsExpanded = true
                 } label: {
                     HStack(spacing: 6) {
-                        if viewModel.isAILoading {
-                            ProgressView()
-                                .progressViewStyle(.circular)
-                                .tint(.white)
-                                .scaleEffect(0.8)
-                            Text("识别中…")
+                        if isRecognizing {
+                            Image(systemName: "sparkles")
+                            Text("整理中…")
                         } else {
                             Image(systemName: "sparkles")
-                            Text("AI 识别填写")
+                            Text("AI 整理文字")
                         }
                     }
                     .font(.caption)
@@ -198,10 +285,10 @@ struct AddRecipeView: View {
                     .background(.black.opacity(0.5))
                     .clipShape(Capsule())
                 }
-                .disabled(viewModel.isAILoading)
+                .disabled(isRecognizing)
                 .padding(12)
-                .accessibilityLabel("AI 识别填写")
-                .accessibilityHint("自动识别菜名、菜系、难度、烹饪时间、原材料和做法")
+                .accessibilityLabel("AI 整理文字")
+                .accessibilityHint("根据照片整理标题、记录内容和可用信息")
             }
         }
         .onChange(of: selectedPhoto) { _, newItem in
@@ -221,7 +308,7 @@ struct AddRecipeView: View {
                     .frame(height: 280)
                 StickerImageView(
                     cutoutImage: cutoutUI,
-                    outlineImage: initialOutlineImage,
+                    outlineImage: currentOutlineImage,
                     maxWidth: UIScreen.main.bounds.width * 0.75,
                     maxHeight: 240
                 )
@@ -257,22 +344,29 @@ struct AddRecipeView: View {
 
     @ViewBuilder
     private var aiUnavailableNotice: some View {
-        if initialAIUnavailableMessage != nil {
+        if currentAIUnavailableMessage != nil {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "sparkles")
                     .font(.subheadline)
                     .foregroundStyle(AppTheme.accent)
                     .padding(.top, 2)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("AI 识别暂不可用")
+                    Text("AI 整理暂不可用")
                         .font(.subheadline)
                         .fontWeight(.semibold)
                         .foregroundStyle(AppTheme.titleText)
-                    Text("可以继续手动填写菜谱信息，照片和保存功能不受影响。")
+                    Text("可以继续手动填写记录，照片和保存功能不受影响。")
                         .font(.caption)
                         .foregroundStyle(AppTheme.bodyText.opacity(0.65))
                 }
                 Spacer(minLength: 0)
+                if scanResultContainer?.shouldShowSubscriptionPrompt == true {
+                    Button("去订阅") {
+                        showSubscription = true
+                    }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.accent)
+                }
             }
             .padding(12)
             .background(AppTheme.cardBackground)
@@ -286,25 +380,112 @@ struct AddRecipeView: View {
         VStack(spacing: 16) {
             nameSection
             dateSection
-            ingredientsSection
-            stepsSection
-            tagsSection
+            if isRecognizing {
+                generationLoadingSection
+            } else {
+                scrapbookDescriptionSection
+            }
+            if !isRecognizing && viewModel.shouldShowRecipeDetails {
+                ingredientsSection
+                stepsSection
+            }
         }
         .padding(16)
+    }
+
+    private var nameTitle: String {
+        "标题"
+    }
+
+    private var namePlaceholder: String {
+        "给这张照片起个标题（可选）"
+    }
+
+    private var descriptionTitle: String {
+        "记录内容"
+    }
+
+    private var descriptionIcon: String {
+        "text.append"
+    }
+
+    private var ingredientsTitle: String {
+        "食材"
+    }
+
+    private var stepsTitle: String {
+        "步骤"
+    }
+
+    private var emptyIngredientsMessage: String {
+        "暂无食材，可手动添加或使用 AI 整理"
+    }
+
+    private var emptyStepsMessage: String {
+        "暂无步骤，可手动添加或使用 AI 整理"
+    }
+
+    private var generationLoadingSection: some View {
+        AIGenerationLoadingView(
+            statusText: "我在帮你整理这张照片",
+            compact: true
+        )
+    }
+
+    /// AI 描写存入备注，可直接作为记录文案继续编辑。
+    @ViewBuilder
+    private var scrapbookDescriptionSection: some View {
+        if viewModel.shouldShowScrapbookDescription {
+            VStack(alignment: .leading, spacing: 6) {
+                Label(descriptionTitle, systemImage: descriptionIcon)
+                    .font(.subheadline)
+                    .foregroundStyle(AppTheme.bodyText)
+                descriptionVariantPicker
+                TextEditor(text: $viewModel.notes)
+                    .font(.body)
+                    .foregroundStyle(AppTheme.titleText)
+                    .scrollContentBackground(.hidden)
+                    .frame(minHeight: 125)
+                    .padding(8)
+                    .background(AppTheme.cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .accessibilityLabel(descriptionTitle)
+                    .accessibilityHint("AI 根据画面整理的文字，可自行修改")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var descriptionVariantPicker: some View {
+        if !viewModel.descriptionVariants.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(viewModel.descriptionVariants) { variant in
+                        DescriptionVariantOptionCard(
+                            variant: variant,
+                            isSelected: variant.id == viewModel.selectedDescriptionVariant?.id
+                        ) {
+                            viewModel.selectDescriptionVariant(variant)
+                        }
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+        }
     }
 
     /// 菜名（可选）
     private var nameSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("菜名")
+            Text(nameTitle)
                 .font(.subheadline)
                 .foregroundStyle(AppTheme.bodyText)
-            TextField("给这道菜起个名字（可选）", text: $viewModel.name)
+            TextField(namePlaceholder, text: $viewModel.name)
                 .font(.title3)
                 .padding(12)
                 .background(AppTheme.cardBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
-                .accessibilityLabel("菜名")
+                .accessibilityLabel(nameTitle)
                 .accessibilityHint("可选，不填将使用默认名称")
         }
     }
@@ -333,7 +514,7 @@ struct AddRecipeView: View {
     private var ingredientsSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("原材料")
+                Text(ingredientsTitle)
                     .font(.subheadline)
                     .foregroundStyle(AppTheme.bodyText)
                 Spacer()
@@ -345,11 +526,11 @@ struct AddRecipeView: View {
                         .foregroundStyle(AppTheme.bodyText)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("编辑原材料")
+                .accessibilityLabel("编辑\(ingredientsTitle)")
             }
 
             if viewModel.ingredients.isEmpty {
-                Text("暂无原材料，可手动添加或使用 AI 识别")
+                Text(emptyIngredientsMessage)
                     .font(.caption)
                     .foregroundStyle(AppTheme.bodyText.opacity(0.4))
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -377,7 +558,7 @@ struct AddRecipeView: View {
     private var stepsSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("做法")
+                Text(stepsTitle)
                     .font(.subheadline)
                     .foregroundStyle(AppTheme.bodyText)
                 Spacer()
@@ -389,11 +570,11 @@ struct AddRecipeView: View {
                         .foregroundStyle(AppTheme.bodyText)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("编辑做法")
+                .accessibilityLabel("编辑\(stepsTitle)")
             }
 
             if viewModel.steps.isEmpty {
-                Text("暂无做法步骤，可手动添加或使用 AI 识别")
+                Text(emptyStepsMessage)
                     .font(.caption)
                     .foregroundStyle(AppTheme.bodyText.opacity(0.4))
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -477,78 +658,6 @@ struct AddRecipeView: View {
         }
     }
 
-    /// 标签（可选，默认折叠）
-    private var tagsSection: some View {
-        DisclosureGroup(isExpanded: $tagsExpanded) {
-            VStack(alignment: .leading, spacing: 12) {
-                // 难度
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("难度")
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.bodyText)
-                    HStack(spacing: 8) {
-                        ForEach(Difficulty.allCases) { d in
-                            TagChipView.difficulty(d, isSelected: viewModel.difficulty == d) {
-                                viewModel.difficulty = viewModel.difficulty == d ? nil : d
-                            }
-                        }
-                    }
-                }
-
-                // 菜式
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("菜式")
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.bodyText)
-                    ScrollViewReader { proxy in
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(Cuisine.allCases) { c in
-                                    TagChipView.cuisine(c, isSelected: viewModel.cuisine == c) {
-                                        viewModel.cuisine = viewModel.cuisine == c ? nil : c
-                                    }
-                                    .id(c)
-                                }
-                            }
-                        }
-                        .onChange(of: viewModel.cuisine) { _, newCuisine in
-                            if let cuisine = newCuisine {
-                                // 延迟等待 DisclosureGroup 展开动画完成后再滚动
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                                    withAnimation(.easeInOut(duration: 0.4)) {
-                                        proxy.scrollTo(cuisine, anchor: .center)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // 耗时
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("耗时")
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.bodyText)
-                    HStack(spacing: 8) {
-                        ForEach(CookingTime.allCases) { t in
-                            TagChipView.cookingTime(t, isSelected: viewModel.cookingTime == t) {
-                                viewModel.cookingTime = viewModel.cookingTime == t ? nil : t
-                            }
-                        }
-                    }
-                }
-            }
-            .padding(.top, 8)
-        } label: {
-            Text("标签（可选）")
-                .font(.subheadline)
-                .foregroundStyle(AppTheme.bodyText)
-        }
-        .padding(12)
-        .background(AppTheme.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-    }
-
     private var recipeUpdateDialog: some View {
         ZStack {
             Color.black.opacity(0.25)
@@ -560,10 +669,10 @@ struct AddRecipeView: View {
                     .tint(AppTheme.bodyText)
 
                 VStack(spacing: 6) {
-                    Text("正在更新菜谱")
+                    Text("正在更新记录")
                         .font(.headline)
                         .foregroundStyle(AppTheme.bodyText)
-                    Text("正在根据新的菜名更新原材料和做法…")
+                    Text("正在根据新的标题整理内容…")
                         .font(.subheadline)
                         .multilineTextAlignment(.center)
                         .foregroundStyle(AppTheme.bodyText.opacity(0.7))
@@ -583,7 +692,7 @@ struct AddRecipeView: View {
     private func saveButtonTapped() {
         guard viewModel.isValid,
               !viewModel.isSaving,
-              !viewModel.isAILoading,
+              !isRecognizing,
               !didCompleteSave else {
             return
         }
@@ -632,7 +741,53 @@ struct AddRecipeView: View {
                 viewModel.imageData = transfer.data
                 // 换图后清除旧抠图（新图没有抠图结果）
                 viewModel.cutoutImageData = nil
+                scanResultContainer?.reset()
             }
         }
+    }
+
+    private func initializeFormIfNeeded() {
+        guard !didInitializeForm else { return }
+        didInitializeForm = true
+
+        if let recipeToEdit {
+            viewModel.populate(from: recipeToEdit)
+            return
+        }
+
+        guard let initialImageData else { return }
+        viewModel.imageData = initialImageData
+
+        if scanResultContainer != nil {
+            applyScanImagesIfNeeded()
+            applyScanSuggestionIfNeeded()
+        } else {
+            viewModel.cutoutImageData = initialCutoutImage?.pngData()
+            if let suggestion = initialSuggestion {
+                viewModel.applyAISuggestion(suggestion)
+            }
+        }
+    }
+
+    private func applyScanImagesIfNeeded() {
+        guard let scanResultContainer,
+              scanResultContainer.imageVersion != appliedImageVersion else {
+            return
+        }
+        appliedImageVersion = scanResultContainer.imageVersion
+        if let cutoutImage = scanResultContainer.cutoutImage,
+           let pngData = cutoutImage.pngData() {
+            viewModel.cutoutImageData = pngData
+        }
+    }
+
+    private func applyScanSuggestionIfNeeded() {
+        guard let scanResultContainer,
+              scanResultContainer.suggestionVersion != appliedSuggestionVersion,
+              let suggestion = scanResultContainer.suggestion else {
+            return
+        }
+        appliedSuggestionVersion = scanResultContainer.suggestionVersion
+        viewModel.applyAISuggestion(suggestion)
     }
 }

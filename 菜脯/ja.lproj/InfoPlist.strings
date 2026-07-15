@@ -1,0 +1,3 @@
+"CFBundleDisplayName" = "Snap Pickle";
+"NSCameraUsageDescription" = "料理の写真を撮影するためにカメラへのアクセスが必要です。写真は任意でレシピ認識に使用されます。";
+"NSPhotoLibraryUsageDescription" = "料理の写真を選択するためにフォトライブラリへのアクセスが必要です。写真は任意でレシピ認識に使用されます。";

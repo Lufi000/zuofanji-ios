@@ -44,6 +44,7 @@ struct ContentView: View {
             .fullScreenCover(isPresented: $showCamera) {
                 CameraView(
                     onCapture: { data in
+                        scanResult.reset()
                         capturedImageData = data
                         showCamera = false
                     },
@@ -60,6 +61,7 @@ struct ContentView: View {
                 guard let item else { return }
                 Task { @MainActor in
                     if let transfer = try? await item.loadTransferable(type: PhotoImageTransfer.self) {
+                        scanResult.reset()
                         capturedImageData = transfer.data
                         showScan = true
                     }
@@ -70,17 +72,11 @@ struct ContentView: View {
                 if !scanResult.cancelled {
                     addRecipePresentation = AddRecipePresentation(
                         imageData: capturedImageData,
-                        suggestion: scanResult.suggestion,
-                        aiUnavailableMessage: scanResult.aiUnavailableMessage,
-                        cutoutImage: scanResult.cutoutImage,
-                        outlineImage: scanResult.outlineImage
+                        scanResultContainer: scanResult
                     )
                 } else {
                     capturedImageData = nil
-                    scanResult.suggestion = nil
-                    scanResult.aiUnavailableMessage = nil
-                    scanResult.cutoutImage = nil
-                    scanResult.outlineImage = nil
+                    scanResult.reset()
                 }
                 scanResult.cancelled = false
                 if shouldOpenSubscriptionAfterScan {
@@ -100,28 +96,15 @@ struct ContentView: View {
             }
             .sheet(item: $addRecipePresentation, onDismiss: {
                 capturedImageData = nil
-                scanResult.suggestion = nil
-                scanResult.aiUnavailableMessage = nil
-                scanResult.cutoutImage = nil
-                scanResult.outlineImage = nil
+                scanResult.reset()
             }) { presentation in
                 AddRecipeView(
                     initialImageData: presentation.imageData,
-                    initialSuggestion: presentation.suggestion,
-                    initialAIUnavailableMessage: presentation.aiUnavailableMessage,
-                    initialCutoutImage: presentation.cutoutImage,
-                    initialOutlineImage: presentation.outlineImage
+                    scanResultContainer: presentation.scanResultContainer
                 )
             }
             .sheet(isPresented: $showSettings) {
-                NavigationStack {
-                    SettingsView()
-                        .toolbar {
-                            ToolbarItem(placement: .cancellationAction) {
-                                Button("完成") { showSettings = false }
-                            }
-                        }
-                }
+                SettingsView(onDone: { showSettings = false })
             }
             .sheet(isPresented: $showSubscription) {
                 NavigationStack {
@@ -205,10 +188,7 @@ struct ContentView: View {
 private struct AddRecipePresentation: Identifiable {
     let id = UUID()
     let imageData: Data?
-    let suggestion: RecipeAISuggestion?
-    let aiUnavailableMessage: String?
-    let cutoutImage: UIImage?
-    let outlineImage: UIImage?
+    let scanResultContainer: ScanResultContainer?
 }
 
 // MARK: - Add Source Sheet

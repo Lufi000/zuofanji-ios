@@ -1,22 +1,26 @@
 import SwiftUI
 import SwiftData
-import UniformTypeIdentifiers
+import UIKit
 
 // MARK: - Settings View
 
 /// 设置页：订阅、支持、备份与法律信息等。
 struct SettingsView: View {
 
+    var onDone: (() -> Void)?
+
     @Environment(\.openURL) private var openURL
     @Environment(\.requestReview) private var requestReview
     @Environment(\.modelContext) private var modelContext
-    @AppStorage(AppearancePreference.storageKey) private var appearancePreferenceRawValue = AppearancePreference.classic.rawValue
+    @AppStorage(AppearancePreference.storageKey) private var appearancePreferenceRawValue = AppearancePreference.defaultRawValue
     @AppStorage(AppLanguage.storageKey) private var languageRawValue = AppLanguage.current.rawValue
     @Query(sort: \Recipe.createdAt, order: .reverse) private var recipes: [Recipe]
     @State private var isTranslatingRecipes = false
     @State private var translationProgress = 0
     @State private var translationTotal = 0
     @State private var translationError: String?
+    @State private var backupShareItem: BackupShareItem?
+    @State private var backupError: String?
 
     var body: some View {
         NavigationStack {
@@ -34,10 +38,25 @@ struct SettingsView: View {
             .navigationTitle("设置")
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                if let onDone {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("完成") { onDone() }
+                    }
+                }
+            }
             .alert("菜谱翻译失败", isPresented: translationErrorPresented) {
                 Button("好", role: .cancel) {}
             } message: {
                 Text(translationError ?? "")
+            }
+            .alert("备份失败", isPresented: backupErrorPresented) {
+                Button("好", role: .cancel) {}
+            } message: {
+                Text(backupError ?? "")
+            }
+            .sheet(item: $backupShareItem) { item in
+                ActivityShareSheet(activityItems: [item.url])
             }
         }
     }
@@ -57,7 +76,7 @@ struct SettingsView: View {
     private var appearanceSection: some View {
         Section {
             Picker(selection: $appearancePreferenceRawValue) {
-                ForEach(AppearancePreference.allCases) { preference in
+                ForEach(AppearancePreference.displayOrder) { preference in
                     Text(preference.title)
                         .tag(preference.rawValue)
                 }
@@ -147,11 +166,9 @@ struct SettingsView: View {
 
     private var dataSection: some View {
         Section("数据") {
-            ShareLink(
-                item: backupDocument,
-                subject: Text("菜脯备份"),
-                preview: SharePreview("caipu-backup.json")
-            ) {
+            Button {
+                createBackupShareItem()
+            } label: {
                 Label("备份我的菜谱", systemImage: "externaldrive")
             }
             .disabled(recipes.isEmpty)
@@ -180,7 +197,7 @@ struct SettingsView: View {
         }
     }
 
-    private var backupDocument: RecipeBackupDocument {
+    private func createBackupShareItem() {
         let payload = RecipeBackupPayload(
             appName: "菜脯",
             appVersion: appVersion,
@@ -192,12 +209,15 @@ struct SettingsView: View {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
 
-        guard let data = try? encoder.encode(payload),
-              let json = String(data: data, encoding: .utf8) else {
-            return RecipeBackupDocument(json: "{}")
+        do {
+            let data = try encoder.encode(payload)
+            let url = FileManager.default.temporaryDirectory
+                .appendingPathComponent("caipu-backup-\(Int(Date().timeIntervalSince1970)).json")
+            try data.write(to: url, options: .atomic)
+            backupShareItem = BackupShareItem(url: url)
+        } catch {
+            backupError = AppLocalization.format("备份失败：%@", error.localizedDescription)
         }
-
-        return RecipeBackupDocument(json: json)
     }
 
     private var appVersion: String {
@@ -207,13 +227,20 @@ struct SettingsView: View {
     }
 
     private var currentAppearancePreference: AppearancePreference {
-        AppearancePreference(rawValue: appearancePreferenceRawValue) ?? .classic
+        AppearancePreference(rawValue: appearancePreferenceRawValue) ?? .defaultPreference
     }
 
     private var translationErrorPresented: Binding<Bool> {
         Binding(
             get: { translationError != nil },
             set: { if !$0 { translationError = nil } }
+        )
+    }
+
+    private var backupErrorPresented: Binding<Bool> {
+        Binding(
+            get: { backupError != nil },
+            set: { if !$0 { backupError = nil } }
         )
     }
 
@@ -345,15 +372,19 @@ private struct RecipeBackupPayload: Codable {
     let recipes: [RecipeBackupItem]
 }
 
-private struct RecipeBackupDocument: Transferable {
+private struct BackupShareItem: Identifiable {
+    let id = UUID()
+    let url: URL
+}
 
-    let json: String
+private struct ActivityShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
 
-    static var transferRepresentation: some TransferRepresentation {
-        DataRepresentation(exportedContentType: .json) { document in
-            Data(document.json.utf8)
-        }
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
     }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 private struct RecipeBackupItem: Codable {
@@ -365,6 +396,7 @@ private struct RecipeBackupItem: Codable {
     let notes: String
     let ingredients: [String]
     let steps: [String]
+    let recordKind: String?
     let difficulty: String?
     let cuisine: String?
     let cookingTime: String?
@@ -380,6 +412,7 @@ private struct RecipeBackupItem: Codable {
         self.notes = content.notes
         self.ingredients = content.ingredients
         self.steps = content.steps
+        self.recordKind = recipe.recordKindRawValue
         self.difficulty = recipe.difficultyRawValue
         self.cuisine = recipe.cuisineRawValue
         self.cookingTime = recipe.cookingTimeRawValue

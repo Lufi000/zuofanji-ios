@@ -3,10 +3,11 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A1B2C3D4E5F60718293A4B5C /* AIGenerationLoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E2F3A4B5C60718293A4B5C /* AIGenerationLoadingView.swift */; };
 		13E72939341ED15A4D83DDB2 /* RecipeSecrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 234B7C83D183798A99CA6D74 /* RecipeSecrets.swift */; };
 		17A9EF4DE3849624BFDDAA4F /* RecipeScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBB440D1BE1BEC2947429209 /* RecipeScanView.swift */; };
 		19EB99CA89C295EE2A00B0A2 /* TagChipView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF391C7504C9F9B6D43F1A /* TagChipView.swift */; };
@@ -16,6 +17,7 @@
 		378C625517DC7786CE8C2E43 /* NotebookPaperBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5974573493F6E5C8390FA0E /* NotebookPaperBackground.swift */; };
 		37982EEA21EF0259CAC860D1 /* ScanResultContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AA1FDB8C0FA46D30EFF3991 /* ScanResultContainer.swift */; };
 		39ECABD5ECFEC423A1056EFB /* RandomRecipeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81AD72A2877F7BF3ADF554A4 /* RandomRecipeView.swift */; };
+		3C2AD1313D636B29072A6E94 /* KiwiMaru-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B07BE50C7E1AA2AA94A8FE33 /* KiwiMaru-Regular.ttf */; };
 		4A2D335E5ACFFD72B9D39BA0 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92983A63CB65570F4EED2D05 /* EmptyStateView.swift */; };
 		4AA55BA043CDA49A3921A58A /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3361779067BB913912F7644 /* Localization.swift */; };
 		4C4650C56CF57C2E331F869A /* shake_sound.wav in Resources */ = {isa = PBXBuildFile; fileRef = D8172FB1D9F3943EBDC18962 /* shake_sound.wav */; };
@@ -25,6 +27,7 @@
 		539D0B812805D3703F6D0FBE /* 菜脯App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63B0FD7B66122DE438346571 /* 菜脯App.swift */; };
 		596598E3171DD3EAB1D41288 /* MaShanZheng-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F5C4D51BBE85829B4B119EA1 /* MaShanZheng-Regular.ttf */; };
 		7027EC27A26EAAEF28EAEC1E /* Recipe.swift in Sources */ = {isa = PBXBuildFile; fileRef = D04AD04909FB637D72148A5A /* Recipe.swift */; };
+		70B56D8B0988304890000853 /* MaoKenTangYuan.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 872643BA954D02928DD37C50 /* MaoKenTangYuan.ttf */; };
 		7315091FA30F061AC9981056 /* AddRecipeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4AA06F98902BF381EB4C16 /* AddRecipeViewModel.swift */; };
 		794D0BB6BBB53F5DB9D821E1 /* SubscriptionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31BCCA01D6E9B339F8F3D6F8 /* SubscriptionStore.swift */; };
 		797852B79CEE253F2727C05D /* OFL-MaShanZheng.txt in Resources */ = {isa = PBXBuildFile; fileRef = 6EDAAAD23F49034D715B6310 /* OFL-MaShanZheng.txt */; };
@@ -37,40 +40,51 @@
 		C0A6E62307B9BB5D902E3645 /* RandomRecipeTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EE083CCEACB33C3E879C61F /* RandomRecipeTabView.swift */; };
 		C220173C5B820A2E14518FF4 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B99A5269561E9F5B02BA746E /* ContentView.swift */; };
 		C6C00266B25A245022AEBF1F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D8D2E05EA15B644284AD5D34 /* Assets.xcassets */; };
+		D5E05648A1548484B92F167E /* OFL-Nunito.txt in Resources */ = {isa = PBXBuildFile; fileRef = 4126CFEA8E47CEC305DF1357 /* OFL-Nunito.txt */; };
+		D75AC6B9CF872E3E7B6908A8 /* Nunito-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3348623B8098CA588198451C /* Nunito-Variable.ttf */; };
 		DB09DFD710C788DF556636D0 /* CameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B42A75A6F3E64153C6A89504 /* CameraView.swift */; };
 		E33C61503F84C75F68704926 /* RecipeListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B1C5C8878627AB0F6D3E103 /* RecipeListView.swift */; };
 		E62662F96918CE2834D560F7 /* AppearancePreference.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58A4A944D225DD3B04EE6929 /* AppearancePreference.swift */; };
+		E7AF211D23B218D622B05130 /* OFL-KiwiMaru.txt in Resources */ = {isa = PBXBuildFile; fileRef = 9D88672E7307ED3E58537A02 /* OFL-KiwiMaru.txt */; };
 		E7C4519F797408580EE26E38 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B71CBF15AD69BC61671AD90 /* AppTheme.swift */; };
 		EC35A8F03768DF09DE6205E4 /* RecipeAIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BCD2D4CCAA77742B6FABD8D /* RecipeAIService.swift */; };
 		F26D415A0A441C9364296FDF /* SubscriptionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 373C50FD378F1FBE321C52B7 /* SubscriptionView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		07F861F218251E490DE02FD4 /* 菜脯.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "菜脯.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		07F861F218251E490DE02FD4 /* 菜脯.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "菜脯.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		0C4AA06F98902BF381EB4C16 /* AddRecipeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRecipeViewModel.swift; sourceTree = "<group>"; };
+		D1E2F3A4B5C60718293A4B5C /* AIGenerationLoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIGenerationLoadingView.swift; sourceTree = "<group>"; };
 		15CD3952E6EE75A95D49AB3D /* ImageCutoutService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCutoutService.swift; sourceTree = "<group>"; };
 		1BCD2D4CCAA77742B6FABD8D /* RecipeAIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeAIService.swift; sourceTree = "<group>"; };
 		234B7C83D183798A99CA6D74 /* RecipeSecrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeSecrets.swift; sourceTree = "<group>"; };
 		2B1C5C8878627AB0F6D3E103 /* RecipeListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeListView.swift; sourceTree = "<group>"; };
 		31BCCA01D6E9B339F8F3D6F8 /* SubscriptionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionStore.swift; sourceTree = "<group>"; };
+		3348623B8098CA588198451C /* Nunito-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Variable.ttf"; sourceTree = "<group>"; };
 		373C50FD378F1FBE321C52B7 /* SubscriptionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionView.swift; sourceTree = "<group>"; };
 		39A948C743EFBA96519C5F4B /* RecipeDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeDetailView.swift; sourceTree = "<group>"; };
 		3AA1FDB8C0FA46D30EFF3991 /* ScanResultContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanResultContainer.swift; sourceTree = "<group>"; };
-		407D7C686169FA43F5C15419 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		407D7C686169FA43F5C15419 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		4126CFEA8E47CEC305DF1357 /* OFL-Nunito.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-Nunito.txt"; sourceTree = "<group>"; };
 		4EE083CCEACB33C3E879C61F /* RandomRecipeTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RandomRecipeTabView.swift; sourceTree = "<group>"; };
 		4F9BA01612EE36C21B67CB44 /* RecipeCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeCardView.swift; sourceTree = "<group>"; };
 		54E5BD1168C5755867677225 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		555A4CA42A961554EBE76E89 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		58A4A944D225DD3B04EE6929 /* AppearancePreference.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearancePreference.swift; sourceTree = "<group>"; };
+		5BE2F241A9DF2F24AF047A25 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		63B0FD7B66122DE438346571 /* 菜脯App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "菜脯App.swift"; sourceTree = "<group>"; };
 		6B71CBF15AD69BC61671AD90 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		6EDAAAD23F49034D715B6310 /* OFL-MaShanZheng.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-MaShanZheng.txt"; sourceTree = "<group>"; };
+		819F5F750CE8113963F1EE76 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		81AD72A2877F7BF3ADF554A4 /* RandomRecipeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RandomRecipeView.swift; sourceTree = "<group>"; };
+		872643BA954D02928DD37C50 /* MaoKenTangYuan.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = MaoKenTangYuan.ttf; sourceTree = "<group>"; };
 		92983A63CB65570F4EED2D05 /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
+		9D88672E7307ED3E58537A02 /* OFL-KiwiMaru.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-KiwiMaru.txt"; sourceTree = "<group>"; };
 		A0FE70438A2A8EA8F1D302A9 /* StickerImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickerImageView.swift; sourceTree = "<group>"; };
 		A2B9DA38548593FB1DBD3B17 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		A9C9CE5C3CAA581BACB53262 /* OFL-PlaywriteGBSGuides.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-PlaywriteGBSGuides.txt"; sourceTree = "<group>"; };
 		AFD6E76878F988260B732E8F /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		B07BE50C7E1AA2AA94A8FE33 /* KiwiMaru-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "KiwiMaru-Regular.ttf"; sourceTree = "<group>"; };
 		B42A75A6F3E64153C6A89504 /* CameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraView.swift; sourceTree = "<group>"; };
 		B99A5269561E9F5B02BA746E /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		C3305550593758F0897F97B7 /* AddRecipeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRecipeView.swift; sourceTree = "<group>"; };
@@ -205,8 +219,13 @@
 		CA6DDFD93A5E3B37AD8FA032 /* Fonts */ = {
 			isa = PBXGroup;
 			children = (
+				B07BE50C7E1AA2AA94A8FE33 /* KiwiMaru-Regular.ttf */,
+				872643BA954D02928DD37C50 /* MaoKenTangYuan.ttf */,
 				F5C4D51BBE85829B4B119EA1 /* MaShanZheng-Regular.ttf */,
+				3348623B8098CA588198451C /* Nunito-Variable.ttf */,
+				9D88672E7307ED3E58537A02 /* OFL-KiwiMaru.txt */,
 				6EDAAAD23F49034D715B6310 /* OFL-MaShanZheng.txt */,
+				4126CFEA8E47CEC305DF1357 /* OFL-Nunito.txt */,
 				A9C9CE5C3CAA581BACB53262 /* OFL-PlaywriteGBSGuides.txt */,
 				F54218275ECBA12961E2B616 /* PlaywriteGBSGuides-Regular.ttf */,
 			);
@@ -241,6 +260,7 @@
 		F16FDDD4854E055B91462AC6 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				D1E2F3A4B5C60718293A4B5C /* AIGenerationLoadingView.swift */,
 				B42A75A6F3E64153C6A89504 /* CameraView.swift */,
 				92983A63CB65570F4EED2D05 /* EmptyStateView.swift */,
 				C5974573493F6E5C8390FA0E /* NotebookPaperBackground.swift */,
@@ -279,7 +299,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1430;
+				LastUpgradeCheck = 2660;
 				TargetAttributes = {
 					BF6FF2F0C613A804BE578071 = {
 						DevelopmentTeam = 3488U99HV8;
@@ -294,11 +314,11 @@
 			knownRegions = (
 				Base,
 				en,
+				ja,
 				"zh-Hans",
 			);
 			mainGroup = 384ADFD30FF9D867D2D0ED54;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -314,9 +334,14 @@
 			files = (
 				C6C00266B25A245022AEBF1F /* Assets.xcassets in Resources */,
 				94B6A1F156489CEF8EAA83AC /* InfoPlist.strings in Resources */,
+				3C2AD1313D636B29072A6E94 /* KiwiMaru-Regular.ttf in Resources */,
 				506717C5637A312C2910BCA7 /* Localizable.strings in Resources */,
 				596598E3171DD3EAB1D41288 /* MaShanZheng-Regular.ttf in Resources */,
+				70B56D8B0988304890000853 /* MaoKenTangYuan.ttf in Resources */,
+				D75AC6B9CF872E3E7B6908A8 /* Nunito-Variable.ttf in Resources */,
+				E7AF211D23B218D622B05130 /* OFL-KiwiMaru.txt in Resources */,
 				797852B79CEE253F2727C05D /* OFL-MaShanZheng.txt in Resources */,
+				D5E05648A1548484B92F167E /* OFL-Nunito.txt in Resources */,
 				BA034C9DF8FB9A31E16B3CCA /* OFL-PlaywriteGBSGuides.txt in Resources */,
 				8DF146DADAC1A10995F637E7 /* PlaywriteGBSGuides-Regular.ttf in Resources */,
 				52069B198B79C16A1C222B06 /* PrivacyInfo.xcprivacy in Resources */,
@@ -336,6 +361,7 @@
 				E7C4519F797408580EE26E38 /* AppTheme.swift in Sources */,
 				E62662F96918CE2834D560F7 /* AppearancePreference.swift in Sources */,
 				DB09DFD710C788DF556636D0 /* CameraView.swift in Sources */,
+				A1B2C3D4E5F60718293A4B5C /* AIGenerationLoadingView.swift in Sources */,
 				C220173C5B820A2E14518FF4 /* ContentView.swift in Sources */,
 				4A2D335E5ACFFD72B9D39BA0 /* EmptyStateView.swift in Sources */,
 				3233E29D197DE5EB2735EE81 /* ImageCutoutService.swift in Sources */,
@@ -368,6 +394,7 @@
 			isa = PBXVariantGroup;
 			children = (
 				AFD6E76878F988260B732E8F /* en */,
+				819F5F750CE8113963F1EE76 /* ja */,
 				A2B9DA38548593FB1DBD3B17 /* zh-Hans */,
 			);
 			name = InfoPlist.strings;
@@ -377,6 +404,7 @@
 			isa = PBXVariantGroup;
 			children = (
 				54E5BD1168C5755867677225 /* en */,
+				5BE2F241A9DF2F24AF047A25 /* ja */,
 				E3F23F7450226146959FC6EA /* zh-Hans */,
 			);
 			name = Localizable.strings;
@@ -391,14 +419,13 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
-				DEVELOPMENT_TEAM = 3488U99HV8;
+				CURRENT_PROJECT_VERSION = 3;
 				INFOPLIST_FILE = "菜脯/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lufi000.zuofanji;
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -410,6 +437,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -441,8 +470,10 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 3488U99HV8;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -456,6 +487,7 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -468,14 +500,13 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
-				DEVELOPMENT_TEAM = 3488U99HV8;
+				CURRENT_PROJECT_VERSION = 3;
 				INFOPLIST_FILE = "菜脯/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lufi000.zuofanji;
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -487,6 +518,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -518,8 +551,10 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 3488U99HV8;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -540,6 +575,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;

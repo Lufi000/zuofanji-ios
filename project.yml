@@ -18,14 +18,17 @@ targets:
       path: 菜脯/Info.plist
       properties:
         CFBundleDisplayName: "Snap Pickle"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSCameraUsageDescription: "需要访问相机以拍摄菜品照片；可选用于识别菜谱信息。"
         NSPhotoLibraryUsageDescription: "需要访问相册以选择菜品照片；可选用于识别菜谱信息。"
         UIAppFonts:
-          - MaShanZheng-Regular.ttf
-          - PlaywriteGBSGuides-Regular.ttf
+          - MaoKenTangYuan.ttf
+          - Nunito-Variable.ttf
+          - KiwiMaru-Regular.ttf
         ITSAppUsesNonExemptEncryption: false
         UIUserInterfaceStyle: Light
     settings:
@@ -34,6 +37,6 @@ targets:
         DEVELOPMENT_TEAM: "3488U99HV8"
         CODE_SIGN_STYLE: "Automatic"
         TARGETED_DEVICE_FAMILY: "1"
-        MARKETING_VERSION: "1.0.0"
-        CURRENT_PROJECT_VERSION: "2"
+        MARKETING_VERSION: "1.0.1"
+        CURRENT_PROJECT_VERSION: "3"
         SWIFT_EMIT_LOC_STRINGS: "YES"

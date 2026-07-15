@@ -67,9 +67,17 @@ enum AppTheme {
 extension Font {
 
     static func scrapbook(size: CGFloat, weight: Font.Weight = .regular, relativeTo textStyle: Font.TextStyle) -> Font {
-        let fontName = AppLocalization.prefersChinese
-            ? "MaShanZheng-Regular"
-            : "PlaywriteGBSGuides-Regular"
+        let fontName: String
+
+        switch AppLanguage.current {
+        case .chinese:
+            fontName = "MaoKenTangYuan-beta"
+        case .english:
+            fontName = weight == .semibold ? "Nunito-SemiBold" : "Nunito-Regular"
+        case .japanese:
+            fontName = "KiwiMaru-Regular"
+        }
+
         return .custom(fontName, size: size, relativeTo: textStyle)
     }
 }

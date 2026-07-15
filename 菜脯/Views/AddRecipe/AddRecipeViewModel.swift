@@ -20,9 +20,14 @@ final class AddRecipeViewModel {
     var notes: String = ""
     var ingredients: [String] = []
     var steps: [String] = []
+    var recordKind: RecipeRecordKind = .foodRecipe
     var difficulty: Difficulty?
     var cuisine: Cuisine?
     var cookingTime: CookingTime?
+    var descriptionVariants: [DescriptionVariant] = []
+    var selectedDescriptionVariantID: DescriptionVariant.ID?
+    var pendingDescriptionVariantID: DescriptionVariant.ID?
+    var hasResolvedContentStructure = false
 
     // MARK: AI State
 
@@ -42,7 +47,30 @@ final class AddRecipeViewModel {
 
     /// 编辑模式下，菜名变化会触发原材料和做法的重新生成。
     var shouldRefreshDetailsForRenamedRecipe: Bool {
-        hasRenamedRecipe
+        hasResolvedContentStructure && hasRenamedRecipe && recordKind == .foodRecipe
+    }
+
+    var shouldShowRecipeDetails: Bool {
+        hasResolvedContentStructure && recordKind.isFoodRelated
+    }
+
+    var shouldShowRecipeTags: Bool {
+        recordKind == .foodRecipe
+    }
+
+    var shouldShowScrapbookDescription: Bool {
+        !hasResolvedContentStructure || !recordKind.isFoodRelated || recordKind.isBabyRecord
+    }
+
+    var selectedDescriptionVariant: DescriptionVariant? {
+        guard let selectedDescriptionVariantID else {
+            return descriptionVariants.first
+        }
+        return descriptionVariants.first { $0.id == selectedDescriptionVariantID } ?? descriptionVariants.first
+    }
+
+    var shouldConfirmDescriptionReplacement: Bool {
+        pendingDescriptionVariantID != nil
     }
 
     // MARK: AI Action
@@ -53,6 +81,7 @@ final class AddRecipeViewModel {
         isAILoading = true
         aiError = nil
         shouldShowSubscriptionPrompt = false
+        hasResolvedContentStructure = false
         defer { isAILoading = false }
 
         let cutoutTask = Task.detached(priority: .userInitiated) {
@@ -80,15 +109,58 @@ final class AddRecipeViewModel {
 
     /// 将 AI 建议写入表单，已有内容不覆盖
     func applyAISuggestion(_ suggestion: RecipeAISuggestion) {
+        recordKind = suggestion.recordKind
+        hasResolvedContentStructure = true
+        descriptionVariants = suggestion.visualDescriptionVariants
+        selectedDescriptionVariantID = descriptionVariants.first?.id
+        pendingDescriptionVariantID = nil
+
+        guard suggestion.recordKind.isFoodRelated else {
+            if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               let suggestedName = suggestion.name {
+                name = suggestedName
+            }
+            if notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               let description = selectedDescriptionVariant?.text ?? suggestion.visualDescription {
+                notes = description
+            }
+            return
+        }
         if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
            let suggestedName = suggestion.name {
             name = suggestedName
+        }
+        if notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           let description = suggestion.visualDescription {
+            notes = description
         }
         if difficulty == nil { difficulty = suggestion.difficulty }
         if cuisine == nil { cuisine = suggestion.cuisine }
         if cookingTime == nil { cookingTime = suggestion.cookingTime }
         if ingredients.isEmpty { ingredients = suggestion.ingredients }
         if steps.isEmpty { steps = suggestion.steps }
+    }
+
+    func selectDescriptionVariant(_ variant: DescriptionVariant) {
+        guard variant.id != selectedDescriptionVariantID else { return }
+        if shouldReplaceDescriptionImmediately {
+            applyDescriptionVariant(variant)
+        } else {
+            pendingDescriptionVariantID = variant.id
+        }
+    }
+
+    func confirmPendingDescriptionVariantReplacement() {
+        guard let pendingDescriptionVariantID,
+              let variant = descriptionVariants.first(where: { $0.id == pendingDescriptionVariantID }) else {
+            self.pendingDescriptionVariantID = nil
+            return
+        }
+        applyDescriptionVariant(variant)
+    }
+
+    func cancelPendingDescriptionVariantReplacement() {
+        pendingDescriptionVariantID = nil
     }
 
     /// 用户在编辑模式手动改菜名后，用新菜名重新生成原材料和做法。
@@ -121,6 +193,7 @@ final class AddRecipeViewModel {
             notes: notes.trimmingCharacters(in: .whitespacesAndNewlines),
             ingredients: ingredients,
             steps: steps,
+            recordKind: recordKind,
             difficulty: difficulty,
             cuisine: cuisine,
             cookingTime: cookingTime
@@ -148,9 +221,14 @@ final class AddRecipeViewModel {
         notes = content.notes
         ingredients = content.ingredients
         steps = content.steps
+        recordKind = recipe.recordKind
+        hasResolvedContentStructure = true
         difficulty = recipe.difficulty
         cuisine = recipe.cuisine
         cookingTime = recipe.cookingTime
+        descriptionVariants = []
+        selectedDescriptionVariantID = nil
+        pendingDescriptionVariantID = nil
     }
 
     /// 更新已有菜谱
@@ -162,6 +240,7 @@ final class AddRecipeViewModel {
         recipe.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         recipe.ingredients = ingredients
         recipe.steps = steps
+        recipe.recordKind = recordKind
         recipe.setCurrentContentLanguage(AppLanguage.current)
         recipe.difficulty = difficulty
         recipe.cuisine = cuisine
@@ -183,5 +262,17 @@ final class AddRecipeViewModel {
     private var hasRenamedRecipe: Bool {
         guard let originalRecipeName else { return false }
         return originalRecipeName.trimmingCharacters(in: .whitespacesAndNewlines) != resolvedName
+    }
+
+    private var shouldReplaceDescriptionImmediately: Bool {
+        let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedNotes.isEmpty else { return true }
+        return descriptionVariants.contains { $0.text.trimmingCharacters(in: .whitespacesAndNewlines) == trimmedNotes }
+    }
+
+    private func applyDescriptionVariant(_ variant: DescriptionVariant) {
+        selectedDescriptionVariantID = variant.id
+        notes = variant.text
+        pendingDescriptionVariantID = nil
     }
 }

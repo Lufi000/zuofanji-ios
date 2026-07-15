@@ -17,9 +17,21 @@ struct RecipeListView: View {
 
     enum ViewMode: String, CaseIterable {
         case grid = "缩略图"
+        case magazine = "拼贴"
         case list = "列表"
+
+        var iconName: String {
+            switch self {
+            case .grid:
+                return "square.grid.2x2"
+            case .magazine:
+                return "rectangle.grid.2x2"
+            case .list:
+                return "list.bullet"
+            }
+        }
     }
-    @State private var viewMode: ViewMode = .list
+    @State private var viewMode: ViewMode = .grid
 
     // MARK: - Filter State
 
@@ -28,7 +40,7 @@ struct RecipeListView: View {
     @State private var filterCookingTime: CookingTime?
     @State private var showFilterSheet = false
     @State private var navigationPath = NavigationPath()
-    @AppStorage(AppearancePreference.storageKey) private var appearancePreferenceRawValue = AppearancePreference.classic.rawValue
+    @AppStorage(AppearancePreference.storageKey) private var appearancePreferenceRawValue = AppearancePreference.defaultRawValue
 
     // MARK: - Data
 
@@ -53,6 +65,8 @@ struct RecipeListView: View {
                         Group {
                             if viewMode == .list {
                                 listContent
+                            } else if viewMode == .magazine {
+                                magazineContent
                             } else {
                                 gridContent
                             }
@@ -122,21 +136,84 @@ struct RecipeListView: View {
         let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
         return LazyVGrid(columns: columns, spacing: 12) {
             ForEach(Array(filteredRecipes.enumerated()), id: \.element.id) { index, recipe in
-                NavigationLink(value: recipe) {
-                    RecipeThumbnailView(
-                        recipe: recipe,
-                        appearancePreference: appearancePreference,
-                        collageIndex: index
-                    )
+                recipeThumbnailLink(
+                    recipe: recipe,
+                    index: index,
+                    imageAspectRatio: 4 / 3,
+                    usesScrapbookJitter: true,
+                    usesFloatingCaption: false
+                )
+            }
+        }
+    }
+
+    private var magazineContent: some View {
+        LazyVStack(spacing: 14) {
+            ForEach(Array(stride(from: 0, to: filteredRecipes.count, by: 6)), id: \.self) { startIndex in
+                magazineGroup(startIndex: startIndex)
+            }
+        }
+    }
+
+    private func magazineGroup(startIndex: Int) -> some View {
+        VStack(spacing: 12) {
+            magazineRecipeLinkIfAvailable(at: startIndex, imageAspectRatio: 16 / 10)
+
+            if startIndex + 1 < filteredRecipes.count {
+                HStack(alignment: .top, spacing: 12) {
+                    magazineRecipeLinkIfAvailable(at: startIndex + 1, imageAspectRatio: 1)
+                    magazineRecipeLinkIfAvailable(at: startIndex + 2, imageAspectRatio: 4 / 3)
                 }
-                .buttonStyle(.plain)
-                .contextMenu {
-                    Button(role: .destructive) {
-                        modelContext.delete(recipe)
-                    } label: {
-                        Label("删除", systemImage: "trash")
+            }
+
+            if startIndex + 3 < filteredRecipes.count {
+                HStack(alignment: .top, spacing: 12) {
+                    magazineRecipeLinkIfAvailable(at: startIndex + 3, imageAspectRatio: 3 / 4)
+                    VStack(spacing: 12) {
+                        magazineRecipeLinkIfAvailable(at: startIndex + 4, imageAspectRatio: 1)
+                        magazineRecipeLinkIfAvailable(at: startIndex + 5, imageAspectRatio: 16 / 10)
                     }
                 }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func magazineRecipeLinkIfAvailable(at index: Int, imageAspectRatio: CGFloat) -> some View {
+        if index < filteredRecipes.count {
+            recipeThumbnailLink(
+                recipe: filteredRecipes[index],
+                index: index,
+                imageAspectRatio: imageAspectRatio,
+                usesScrapbookJitter: false,
+                usesFloatingCaption: true
+            )
+        }
+    }
+
+    private func recipeThumbnailLink(
+        recipe: Recipe,
+        index: Int,
+        imageAspectRatio: CGFloat,
+        usesScrapbookJitter: Bool,
+        usesFloatingCaption: Bool
+    ) -> some View {
+        NavigationLink(value: recipe) {
+            RecipeThumbnailView(
+                recipe: recipe,
+                appearancePreference: appearancePreference,
+                collageIndex: index,
+                imageAspectRatio: imageAspectRatio,
+                usesScrapbookJitter: usesScrapbookJitter,
+                usesFloatingCaption: usesFloatingCaption
+            )
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button(role: .destructive) {
+                modelContext.delete(recipe)
+            } label: {
+                Label("删除", systemImage: "trash")
             }
         }
     }
@@ -163,7 +240,7 @@ struct RecipeListView: View {
     }
 
     private var appearancePreference: AppearancePreference {
-        AppearancePreference(rawValue: appearancePreferenceRawValue) ?? .classic
+        AppearancePreference(rawValue: appearancePreferenceRawValue) ?? .defaultPreference
     }
 
     private var toolbarBackground: Color {
@@ -201,13 +278,19 @@ struct RecipeListView: View {
     }
 
     private var viewModeButton: some View {
-        Button {
-            viewMode = viewMode == .list ? .grid : .list
+        Menu {
+            ForEach(ViewMode.allCases, id: \.self) { mode in
+                Button {
+                    viewMode = mode
+                } label: {
+                    Label(mode.rawValue, systemImage: mode.iconName)
+                }
+            }
         } label: {
-            Image(systemName: viewMode == .list ? "square.grid.2x2" : "list.bullet")
+            Image(systemName: viewMode.iconName)
                 .foregroundStyle(AppTheme.bodyText)
         }
-        .accessibilityLabel(AppLocalization.text(viewMode == .list ? "切换为缩略图" : "切换为列表"))
+        .accessibilityLabel(AppLocalization.format("当前视图：%@", viewMode.rawValue))
     }
 
     private var settingsButton: some View {
@@ -268,10 +351,11 @@ struct RecipeListView: View {
     }
 
     private func prewarmCutoutTrimCacheIfNeeded() {
-        guard appearancePreference == .scrapbook, viewMode == .grid else { return }
+        guard appearancePreference == .scrapbook, viewMode != .list else { return }
         CutoutImageTrimCache.shared.prewarm(
             filteredRecipes.compactMap(\.cutoutImageData),
-            limit: 40
+            limit: viewMode == .magazine ? 12 : 18,
+            maxPixelDimension: 900
         )
     }
 

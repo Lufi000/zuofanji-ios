@@ -7,10 +7,7 @@ struct ScanningOverlayView: View {
     let currentStep: Int
     let totalSteps: Int
     let progressPercent: Int
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    @State private var scanPosition: CGFloat = -0.25
+    let tracingContourImage: UIImage?
 
     private var progress: CGFloat {
         min(max(CGFloat(progressPercent) / 100, 0), 1)
@@ -33,21 +30,23 @@ struct ScanningOverlayView: View {
                 )
                 .ignoresSafeArea()
 
-                VStack(spacing: 28) {
+                VStack(spacing: 26) {
                     Spacer(minLength: 82)
 
                     analysisImage(width: imageWidth, height: imageHeight)
 
-                    statusArea
+                    AIGenerationLoadingView(
+                        statusText: statusText,
+                        showsProgress: true,
+                        progress: progress,
+                        compact: false
+                    )
                         .frame(maxWidth: min(geometry.size.width - 40, 420))
 
                     Spacer(minLength: 40)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-        }
-        .onAppear {
-            startScanAnimation()
         }
     }
 
@@ -58,112 +57,120 @@ struct ScanningOverlayView: View {
                 .aspectRatio(contentMode: .fit)
                 .frame(width: width, height: height)
 
-            analysisSweep(width: width, height: height)
+            if let tracingContourImage {
+                EdgeTracingOverlayView(
+                    contourImage: tracingContourImage,
+                    width: width,
+                    height: height
+                )
+            } else {
+                waitingEdgeGlow(width: width, height: height)
+            }
         }
         .frame(width: width, height: height)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .shadow(color: .black.opacity(0.35), radius: 20, y: 12)
     }
 
-    private func analysisSweep(width: CGFloat, height: CGFloat) -> some View {
-        let yOffset = scanPosition * height
-
-        return ZStack {
-            LinearGradient(
-                colors: [
-                    Color.clear,
-                    AppTheme.accent.opacity(0.12),
-                    Color.white.opacity(0.08),
-                    Color.clear
-                ],
-                startPoint: .top,
-                endPoint: .bottom
+    private func waitingEdgeGlow(width: CGFloat, height: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: 24, style: .continuous)
+            .strokeBorder(
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(0.28),
+                        Color(hex: 0xFFD59B).opacity(0.18),
+                        Color.white.opacity(0.08)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                lineWidth: 1
             )
-            .frame(width: width, height: height * 0.22)
-            .offset(y: yOffset)
-
-            Rectangle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.clear,
-                            Color(hex: 0xFFD59B),
-                            Color.white,
-                            Color.clear
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .frame(width: width * 0.9, height: 2)
-                .offset(y: yOffset)
-                .shadow(color: AppTheme.accent, radius: 8)
-        }
+            .frame(width: width, height: height)
+            .shadow(color: Color(hex: 0xFFD59B).opacity(0.18), radius: 12)
         .allowsHitTesting(false)
     }
 
-    private var statusArea: some View {
-        VStack(spacing: 14) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(statusText)
-                        .font(.headline.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .contentTransition(.opacity)
+}
 
-                    Text(
-                        AppLocalization.format(
-                            "第 %lld / %lld 步",
-                            Int64(currentStep),
-                            Int64(totalSteps)
-                        )
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.58))
-                }
+private struct EdgeTracingOverlayView: View {
+    let contourImage: UIImage
+    let width: CGFloat
+    let height: CGFloat
 
-                Spacer()
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-                Text("\(progressPercent)%")
-                    .font(.system(.title3, design: .rounded).weight(.bold))
-                    .monospacedDigit()
-                    .foregroundStyle(.white)
+    @State private var highlightRotation = 0.0
+
+    var body: some View {
+        ZStack {
+            contourLayer(color: Color(hex: 0xFFD59B), opacity: 0.36)
+                .blur(radius: 0.6)
+
+            contourLayer(color: Color(hex: 0xFFD59B), opacity: 0.2)
+                .blur(radius: 5)
+
+            if reduceMotion {
+                contourLayer(color: .white, opacity: 0.72)
+                    .blur(radius: 0.4)
+            } else {
+                movingHighlight
             }
-
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(.white.opacity(0.16))
-
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    AppTheme.accent,
-                                    Color(hex: 0xFFD59B)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: proxy.size.width * progress)
-                        .animation(.easeOut(duration: 0.35), value: progressPercent)
-                }
-            }
-            .frame(height: 8)
         }
-        .padding(.horizontal, 4)
+        .frame(width: width, height: height)
+        .allowsHitTesting(false)
+        .onAppear {
+            startHighlightAnimation()
+        }
+        .onChange(of: reduceMotion) { _, _ in
+            startHighlightAnimation()
+        }
     }
 
-    private func startScanAnimation() {
+    private var movingHighlight: some View {
+        AngularGradient(
+            colors: [
+                .clear,
+                .clear,
+                Color(hex: 0xFFD59B).opacity(0.12),
+                .white.opacity(0.95),
+                Color(hex: 0xFFD59B).opacity(0.75),
+                .clear,
+                .clear
+            ],
+            center: .center,
+            angle: .degrees(highlightRotation)
+        )
+        .frame(width: width, height: height)
+        .mask(contourMask)
+        .shadow(color: Color(hex: 0xFFD59B).opacity(0.7), radius: 8)
+    }
+
+    private var contourMask: some View {
+        Image(uiImage: contourImage)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: width, height: height)
+    }
+
+    private func contourLayer(color: Color, opacity: Double) -> some View {
+        Image(uiImage: contourImage)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: width, height: height)
+            .colorMultiply(color)
+            .opacity(opacity)
+    }
+
+    private func startHighlightAnimation() {
         guard !reduceMotion else {
-            scanPosition = 0
+            highlightRotation = 0
             return
         }
 
-        scanPosition = -0.55
-        withAnimation(.easeInOut(duration: 2).repeatForever(autoreverses: true)) {
-            scanPosition = 0.55
+        highlightRotation = 0
+        withAnimation(.linear(duration: 1.8).repeatForever(autoreverses: false)) {
+            highlightRotation = 360
         }
     }
 }

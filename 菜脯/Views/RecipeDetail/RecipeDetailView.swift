@@ -9,7 +9,7 @@ struct RecipeDetailView: View {
 
     @State private var showEditSheet = false
     @State private var showDeleteConfirmation = false
-    @AppStorage(AppearancePreference.storageKey) private var appearancePreferenceRawValue = AppearancePreference.classic.rawValue
+    @AppStorage(AppearancePreference.storageKey) private var appearancePreferenceRawValue = AppearancePreference.defaultRawValue
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -18,13 +18,12 @@ struct RecipeDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 headerSection
-                ingredientsSection
-                stepsSection
+                detailContent
             }
             .padding(.horizontal, 16)
-            .padding(.top, 16)
             .padding(.bottom, 32)
         }
+        .contentMargins(.top, 16, for: .scrollContent)
         .background {
             pageBackground
         }
@@ -65,7 +64,7 @@ struct RecipeDetailView: View {
     // MARK: - Subviews
 
     private var appearancePreference: AppearancePreference {
-        AppearancePreference(rawValue: appearancePreferenceRawValue) ?? .classic
+        AppearancePreference(rawValue: appearancePreferenceRawValue) ?? .defaultPreference
     }
 
     private var isScrapbook: Bool {
@@ -87,15 +86,12 @@ struct RecipeDetailView: View {
         }
     }
 
-    /// 顶部信息区：大图在上，菜名和标签在下，让详情页更突出菜品本身。
+    /// 顶部信息区：大图在上，菜名和日期在下，让详情页更突出内容本身。
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             dishHeroImage
-            VStack(alignment: .leading, spacing: 8) {
-                infoSection
-                tagsSection
-            }
-            .frame(maxWidth: .infinity, alignment: .topLeading)
+            infoSection
+                .frame(maxWidth: .infinity, alignment: .topLeading)
         }
     }
 
@@ -133,17 +129,15 @@ struct RecipeDetailView: View {
     }
 
     private func heroImageContainer<Content: View>(@ViewBuilder content: @escaping () -> Content) -> some View {
-        GeometryReader { proxy in
-            ZStack {
-                if !isScrapbook {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(AppTheme.cardBackground)
-                }
-                content()
-                    .frame(width: proxy.size.width, height: proxy.size.height)
+        ZStack {
+            if !isScrapbook {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(AppTheme.cardBackground)
             }
-            .frame(width: proxy.size.width, height: proxy.size.height)
+            content()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .frame(maxWidth: .infinity)
         .aspectRatio(4.0 / 3.0, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
@@ -173,45 +167,38 @@ struct RecipeDetailView: View {
         }
     }
 
-    /// 标签
     @ViewBuilder
-    private var tagsSection: some View {
-        let hasTags = recipe.difficulty != nil || recipe.cuisine != nil || recipe.cookingTime != nil
-        if hasTags {
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 8) {
-                    tagChips
-                }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    tagChips
-                }
+    private var detailContent: some View {
+        switch recipe.recordKind {
+        case .foodRecipe:
+            ingredientsSection
+            stepsSection
+            if !recipe.localizedContent.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                notesSection(title: "备注", icon: "note.text")
             }
-        }
-    }
-
-    @ViewBuilder
-    private var tagChips: some View {
-        if let d = recipe.difficulty {
-            TagChipView.difficulty(d)
-        }
-        if let c = recipe.cuisine {
-            TagChipView.cuisine(c)
-        }
-        if let t = recipe.cookingTime {
-            TagChipView.cookingTime(t)
+        case .babyMeal:
+            notesSection(title: "宝宝记录", icon: "heart.text.square")
+            ingredientsSection
+            stepsSection
+        case .babyDaily:
+            notesSection(title: "宝宝小记", icon: "heart.text.square")
+        case .scrapbook:
+            notesSection(title: "手帐描述", icon: "sparkles")
         }
     }
 
     /// 原材料列表
     private var ingredientsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("原材料")
+            Text(recipe.recordKind == .babyMeal ? "食材" : "原材料")
                 .font(sectionTitleFont)
                 .foregroundStyle(AppTheme.titleText)
 
             if recipe.localizedContent.ingredients.isEmpty {
-                emptySectionButton(icon: "carrot", message: "还没有填写原材料")
+                emptySectionButton(
+                    icon: "carrot",
+                    message: recipe.recordKind == .babyMeal ? "还没有记录食材" : "还没有填写原材料"
+                )
             } else {
                 LazyVGrid(columns: ingredientColumns, alignment: .leading, spacing: 6) {
                     ForEach(recipe.localizedContent.ingredients, id: \.self) { item in
@@ -249,7 +236,10 @@ struct RecipeDetailView: View {
                 .foregroundStyle(AppTheme.titleText)
 
             if recipe.localizedContent.steps.isEmpty {
-                emptySectionButton(icon: "list.bullet.clipboard", message: "还没有填写做法")
+                emptySectionButton(
+                    icon: "list.bullet.clipboard",
+                    message: recipe.recordKind == .babyMeal ? "还没有记录做法" : "还没有填写做法"
+                )
             } else {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(recipe.localizedContent.steps.indices, id: \.self) { index in
@@ -275,6 +265,39 @@ struct RecipeDetailView: View {
                 }
             }
         }
+    }
+
+    private func notesSection(title: String, icon: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(title, systemImage: icon)
+                .font(sectionTitleFont)
+                .foregroundStyle(AppTheme.titleText)
+
+            let notes = recipe.localizedContent.notes.trimmingCharacters(in: .whitespacesAndNewlines)
+            if notes.isEmpty {
+                emptySectionButton(icon: icon, message: "还没有填写记录")
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(noteRows(from: notes), id: \.self) { row in
+                        Text(row)
+                            .font(bodyFont)
+                            .foregroundStyle(AppTheme.bodyText)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .padding(12)
+                .background(sectionBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+        }
+    }
+
+    private func noteRows(from notes: String) -> [String] {
+        let rows = notes
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        return rows.isEmpty ? [notes] : rows
     }
 
     private var sectionTitleFont: Font {

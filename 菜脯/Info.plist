@@ -17,9 +17,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSCameraUsageDescription</key>
@@ -28,8 +28,9 @@
 	<string>需要访问相册以选择菜品照片；可选用于识别菜谱信息。</string>
 	<key>UIAppFonts</key>
 	<array>
-		<string>MaShanZheng-Regular.ttf</string>
-		<string>PlaywriteGBSGuides-Regular.ttf</string>
+		<string>MaoKenTangYuan.ttf</string>
+		<string>Nunito-Variable.ttf</string>
+		<string>KiwiMaru-Regular.ttf</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>

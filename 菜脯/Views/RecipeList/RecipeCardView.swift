@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import ImageIO
 
 // MARK: - Recipe Card View (Feed Style)
 
@@ -124,7 +125,8 @@ struct RecipeCardView: View {
                         padding: EdgeInsets(top: 2, leading: 8, bottom: 2, trailing: 8),
                         shadowOpacity: 0.18,
                         shadowRadius: 8,
-                        shadowY: 5
+                        shadowY: 5,
+                        maxPixelDimension: 1400
                     )
                 } else if let data = recipe.imageData, let uiImage = UIImage(data: data) {
                     Image(uiImage: uiImage)
@@ -179,6 +181,9 @@ struct RecipeCardView: View {
 
     private func collectTags() -> [TagInfo] {
         var result: [TagInfo] = []
+        if recipe.recordKind != .foodRecipe {
+            result.append(TagInfo(text: recipe.recordKind.localizedName, color: AppTheme.tagCuisine))
+        }
         if let d = recipe.difficulty {
             result.append(TagInfo(text: d.localizedName, color: AppTheme.tagDifficulty))
         }
@@ -197,25 +202,88 @@ struct RecipeCardView: View {
 /// 缩略图网格用的小卡片：小图 + 菜名/日期，一屏可展示更多菜谱。
 struct RecipeThumbnailView: View {
 
+    private enum FloatingCaptionPosition {
+        case bottomLeading
+        case topTrailing
+        case bottomTrailing
+        case topLeading
+        case center
+
+        var alignment: Alignment {
+            switch self {
+            case .bottomLeading:
+                return .bottomLeading
+            case .topTrailing:
+                return .topTrailing
+            case .bottomTrailing:
+                return .bottomTrailing
+            case .topLeading:
+                return .topLeading
+            case .center:
+                return .center
+            }
+        }
+
+        var horizontalAlignment: HorizontalAlignment {
+            switch self {
+            case .topTrailing, .bottomTrailing:
+                return .trailing
+            default:
+                return .leading
+            }
+        }
+
+        var textAlignment: TextAlignment {
+            switch self {
+            case .topTrailing, .bottomTrailing:
+                return .trailing
+            default:
+                return .leading
+            }
+        }
+
+        var frameAlignment: Alignment {
+            switch self {
+            case .topTrailing, .bottomTrailing:
+                return .trailing
+            default:
+                return .leading
+            }
+        }
+    }
+
     let recipe: Recipe
     let appearancePreference: AppearancePreference
     var collageIndex: Int = 0
+    var imageAspectRatio: CGFloat = 4 / 3
+    var usesScrapbookJitter: Bool = true
+    var usesFloatingCaption: Bool = false
     private let infoSectionHeight: CGFloat = 68
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            thumbnailImage
-            VStack(alignment: .leading, spacing: infoSpacing) {
-                Text(recipe.localizedContent.name.isEmpty ? AppLocalization.text("未命名") : recipe.localizedContent.name)
-                    .font(titleFont)
-                    .foregroundStyle(AppTheme.titleText)
-                    .lineLimit(2, reservesSpace: true)
-                Text(recipe.date, format: .dateTime.month().day())
-                    .font(dateFont)
-                    .foregroundStyle(AppTheme.bodyText)
+        Group {
+            if usesFloatingCaption, appearancePreference == .scrapbook {
+                scrapbookFloatingCard
+            } else if usesFloatingCaption {
+                thumbnailImage
+                    .overlay(alignment: floatingCaptionAlignment) {
+                        GeometryReader { proxy in
+                            floatingCaption(containerSize: proxy.size)
+                                .padding(floatingCaptionPadding)
+                                .frame(
+                                    width: proxy.size.width,
+                                    height: proxy.size.height,
+                                    alignment: floatingCaptionAlignment
+                                )
+                        }
+                        .allowsHitTesting(false)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 0) {
+                    thumbnailImage
+                    thumbnailInfoSection
+                }
             }
-            .padding(8)
-            .frame(height: infoSectionHeight, alignment: .topLeading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
@@ -234,6 +302,104 @@ struct RecipeThumbnailView: View {
                 recipe.date.formatted(.dateTime.month().day())
             )
         )
+    }
+
+    private var scrapbookFloatingCard: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            scrapbookThumbnailImage
+                .frame(maxWidth: .infinity)
+
+            scrapbookOutsideCaption
+                .padding(.horizontal, 8)
+                .padding(.bottom, 8)
+        }
+    }
+
+    private var scrapbookOutsideCaption: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(recipe.localizedContent.name.isEmpty ? AppLocalization.text("未命名") : recipe.localizedContent.name)
+                .font(.scrapbook(size: scrapbookOutsideTitleSize, weight: .semibold, relativeTo: .headline))
+                .foregroundStyle(AppTheme.titleText)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(recipe.date, format: .dateTime.month().day())
+                .font(.scrapbook(size: scrapbookOutsideDateSize, weight: .regular, relativeTo: .caption))
+                .foregroundStyle(AppTheme.bodyText)
+
+            ForEach(Array(scrapbookDetailLines(maxCount: scrapbookOutsideDetailLineLimit).enumerated()), id: \.offset) { _, line in
+                Text(line)
+                    .font(.scrapbook(size: scrapbookOutsideDetailSize, weight: .regular, relativeTo: .caption2))
+                    .foregroundStyle(AppTheme.bodyText.opacity(0.88))
+                    .lineLimit(1)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .rotationEffect(floatingCaptionRotation)
+    }
+
+    private var thumbnailInfoSection: some View {
+        VStack(alignment: .leading, spacing: infoSpacing) {
+            Text(recipe.localizedContent.name.isEmpty ? AppLocalization.text("未命名") : recipe.localizedContent.name)
+                .font(titleFont)
+                .foregroundStyle(AppTheme.titleText)
+                .lineLimit(2, reservesSpace: true)
+            Text(recipe.date, format: .dateTime.month().day())
+                .font(dateFont)
+                .foregroundStyle(AppTheme.bodyText)
+            if appearancePreference == .scrapbook {
+                ForEach(Array(scrapbookDetailLines(maxCount: 2).enumerated()), id: \.offset) { _, line in
+                    Text(line)
+                        .font(.scrapbook(size: 10, weight: .regular, relativeTo: .caption2))
+                        .foregroundStyle(AppTheme.bodyText.opacity(0.86))
+                        .lineLimit(1)
+                }
+            }
+        }
+        .padding(8)
+        .frame(height: thumbnailInfoSectionHeight, alignment: .topLeading)
+    }
+
+    private func floatingCaption(containerSize: CGSize) -> some View {
+        VStack(alignment: floatingCaptionTextAlignment, spacing: floatingCaptionSpacing) {
+            Text(recipe.localizedContent.name.isEmpty ? AppLocalization.text("未命名") : recipe.localizedContent.name)
+                .font(floatingTitleFont(containerSize: containerSize))
+                .foregroundStyle(AppTheme.titleText)
+                .lineLimit(2)
+                .multilineTextAlignment(floatingTextAlignment)
+                .shadow(color: scrapbookTextShadowColor, radius: scrapbookTextShadowRadius, x: 0, y: 1)
+            Text(recipe.date, format: .dateTime.month().day())
+                .font(floatingDateFont(containerSize: containerSize))
+                .foregroundStyle(AppTheme.bodyText)
+                .shadow(color: scrapbookTextShadowColor, radius: scrapbookTextShadowRadius, x: 0, y: 1)
+            if appearancePreference == .scrapbook {
+                ForEach(Array(scrapbookDetailLines(maxCount: floatingDetailLineLimit(containerSize: containerSize)).enumerated()), id: \.offset) { _, line in
+                    Text(line)
+                        .font(floatingDetailFont(containerSize: containerSize))
+                        .foregroundStyle(AppTheme.bodyText.opacity(0.9))
+                        .lineLimit(1)
+                        .multilineTextAlignment(floatingTextAlignment)
+                        .shadow(color: scrapbookTextShadowColor, radius: scrapbookTextShadowRadius, x: 0, y: 1)
+                }
+            }
+        }
+        .padding(.horizontal, floatingCaptionHorizontalInset)
+        .padding(.vertical, floatingCaptionVerticalInset)
+        .frame(maxWidth: floatingCaptionMaxWidth(containerSize: containerSize), alignment: floatingFrameAlignment)
+        .background {
+            if appearancePreference != .scrapbook {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(floatingCaptionBackground)
+            }
+        }
+        .overlay {
+            if appearancePreference != .scrapbook {
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(AppTheme.bodyText.opacity(0.16), lineWidth: 1)
+            }
+        }
+        .shadow(color: floatingCaptionShadowColor, radius: floatingCaptionShadowRadius, x: 0, y: 2)
+        .rotationEffect(floatingCaptionRotation)
     }
 
     /// 缩略图
@@ -259,12 +425,177 @@ struct RecipeThumbnailView: View {
         appearancePreference == .scrapbook ? 1 : 4
     }
 
+    private var thumbnailInfoSectionHeight: CGFloat {
+        appearancePreference == .scrapbook ? 92 : infoSectionHeight
+    }
+
     private var titleFont: Font {
         appearancePreference == .scrapbook ? .scrapbook(size: 15, weight: .semibold, relativeTo: .subheadline) : .subheadline
     }
 
     private var dateFont: Font {
         appearancePreference == .scrapbook ? .scrapbook(size: 12, weight: .regular, relativeTo: .caption2) : .caption2
+    }
+
+    private func floatingTitleFont(containerSize: CGSize) -> Font {
+        guard appearancePreference == .scrapbook else {
+            return .caption.weight(.semibold)
+        }
+        return .scrapbook(
+            size: floatingTitleSize(containerSize: containerSize),
+            weight: .semibold,
+            relativeTo: .headline
+        )
+    }
+
+    private func floatingDateFont(containerSize: CGSize) -> Font {
+        guard appearancePreference == .scrapbook else {
+            return .caption2
+        }
+        return .scrapbook(
+            size: floatingDateSize(containerSize: containerSize),
+            weight: .regular,
+            relativeTo: .caption
+        )
+    }
+
+    private func floatingDetailFont(containerSize: CGSize) -> Font {
+        .scrapbook(
+            size: floatingDetailSize(containerSize: containerSize),
+            weight: .regular,
+            relativeTo: .caption2
+        )
+    }
+
+    private func floatingTitleSize(containerSize: CGSize) -> CGFloat {
+        let longEdge = max(containerSize.width, containerSize.height)
+        return min(max(longEdge * 0.16, 18), 34)
+    }
+
+    private func floatingDateSize(containerSize: CGSize) -> CGFloat {
+        min(max(floatingTitleSize(containerSize: containerSize) * 0.5, 10), 15)
+    }
+
+    private func floatingDetailSize(containerSize: CGSize) -> CGFloat {
+        min(max(floatingTitleSize(containerSize: containerSize) * 0.42, 9.5), 14)
+    }
+
+    private func floatingCaptionMaxWidth(containerSize: CGSize) -> CGFloat {
+        guard appearancePreference == .scrapbook else {
+            return 145
+        }
+        return min(max(containerSize.width * 0.92, 160), 300)
+    }
+
+    private func floatingDetailLineLimit(containerSize: CGSize) -> Int {
+        let longEdge = max(containerSize.width, containerSize.height)
+        if longEdge > 260 {
+            return 3
+        }
+        if longEdge > 180 {
+            return 2
+        }
+        return 1
+    }
+
+    private var scrapbookOutsideTitleSize: CGFloat {
+        if imageAspectRatio > 1.45 {
+            return 30
+        }
+        if imageAspectRatio < 0.9 {
+            return 21
+        }
+        return 24
+    }
+
+    private var scrapbookOutsideDateSize: CGFloat {
+        min(max(scrapbookOutsideTitleSize * 0.48, 11), 15)
+    }
+
+    private var scrapbookOutsideDetailSize: CGFloat {
+        min(max(scrapbookOutsideTitleSize * 0.44, 10), 14)
+    }
+
+    private var scrapbookOutsideDetailLineLimit: Int {
+        imageAspectRatio > 1.2 ? 3 : 2
+    }
+
+    private var floatingCaptionHorizontalInset: CGFloat {
+        appearancePreference == .scrapbook ? 0 : 9
+    }
+
+    private var floatingCaptionVerticalInset: CGFloat {
+        appearancePreference == .scrapbook ? 0 : 7
+    }
+
+    private var floatingCaptionSpacing: CGFloat {
+        appearancePreference == .scrapbook ? 1 : 2
+    }
+
+    private var floatingCaptionBackground: Color {
+        appearancePreference == .scrapbook ? AppTheme.cardBackground.opacity(0.86) : AppTheme.cardBackground.opacity(0.92)
+    }
+
+    private var floatingCaptionShadowColor: Color {
+        appearancePreference == .scrapbook ? .clear : .black.opacity(0.08)
+    }
+
+    private var floatingCaptionShadowRadius: CGFloat {
+        appearancePreference == .scrapbook ? 0 : 3
+    }
+
+    private var scrapbookTextShadowColor: Color {
+        appearancePreference == .scrapbook ? AppTheme.notebookPaper.opacity(0.65) : .clear
+    }
+
+    private var scrapbookTextShadowRadius: CGFloat {
+        appearancePreference == .scrapbook ? 1.5 : 0
+    }
+
+    private var floatingCaptionAlignment: Alignment {
+        floatingCaptionPosition.alignment
+    }
+
+    private var floatingCaptionTextAlignment: HorizontalAlignment {
+        floatingCaptionPosition.horizontalAlignment
+    }
+
+    private var floatingTextAlignment: TextAlignment {
+        floatingCaptionPosition.textAlignment
+    }
+
+    private var floatingFrameAlignment: Alignment {
+        floatingCaptionPosition.frameAlignment
+    }
+
+    private var floatingCaptionPosition: FloatingCaptionPosition {
+        let positions: [FloatingCaptionPosition] = [
+            .bottomLeading,
+            .topTrailing,
+            .bottomTrailing,
+            .topLeading,
+            .bottomLeading,
+            .bottomLeading
+        ]
+        return positions[collageIndex % positions.count]
+    }
+
+    private var floatingCaptionPadding: EdgeInsets {
+        let values: [EdgeInsets] = [
+            EdgeInsets(top: 8, leading: 9, bottom: 10, trailing: 8),
+            EdgeInsets(top: 10, leading: 8, bottom: 8, trailing: 9),
+            EdgeInsets(top: 8, leading: 8, bottom: 10, trailing: 9),
+            EdgeInsets(top: 10, leading: 9, bottom: 8, trailing: 8),
+            EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8),
+            EdgeInsets(top: 8, leading: 14, bottom: 10, trailing: 8)
+        ]
+        return values[collageIndex % values.count]
+    }
+
+    private var floatingCaptionRotation: Angle {
+        guard appearancePreference == .scrapbook else { return .degrees(0) }
+        let degrees: [Double] = [-2.2, 1.8, -1.4, 2.0, -0.8, 1.2]
+        return .degrees(degrees[collageIndex % degrees.count])
     }
 
     private var scrapbookRotation: Angle {
@@ -274,24 +605,75 @@ struct RecipeThumbnailView: View {
     }
 
     private var scrapbookTopPadding: CGFloat {
-        guard appearancePreference == .scrapbook else { return 0 }
+        guard appearancePreference == .scrapbook, usesScrapbookJitter else { return 0 }
         let paddings: [CGFloat] = [0, 30, 6, 42, 2, 26]
         return paddings[collageIndex % paddings.count]
     }
 
     private var scrapbookBottomPadding: CGFloat {
-        guard appearancePreference == .scrapbook else { return 0 }
+        guard appearancePreference == .scrapbook, usesScrapbookJitter else { return 0 }
         let paddings: [CGFloat] = [24, 0, 28, 2, 22, 4]
         return paddings[collageIndex % paddings.count]
     }
 
     private var scrapbookYOffset: CGFloat {
-        guard appearancePreference == .scrapbook else { return 0 }
+        guard appearancePreference == .scrapbook, usesScrapbookJitter else { return 0 }
         return collageIndex.isMultiple(of: 2) ? -6 : 18
     }
 
     private var scrapbookVerticalBreathingRoom: CGFloat {
-        appearancePreference == .scrapbook ? 8 : 0
+        appearancePreference == .scrapbook && usesScrapbookJitter ? 8 : 0
+    }
+
+    private func scrapbookDetailLines(maxCount: Int) -> [String] {
+        guard maxCount > 0 else { return [] }
+
+        let content = recipe.localizedContent
+        var lines: [String] = []
+
+        if let noteLine = firstUsefulNoteLine(from: content.notes) {
+            lines.append(noteLine)
+        }
+
+        if !content.ingredients.isEmpty {
+            lines.append(contentsOf: content.ingredients.prefix(2))
+        }
+
+        if let firstStep = content.steps.first {
+            lines.append(firstStep)
+        }
+
+        if lines.isEmpty {
+            lines.append(contentsOf: collectScrapbookTags())
+        }
+
+        return lines
+            .map(shortenedScrapbookLine)
+            .filter { !$0.isEmpty }
+            .prefix(maxCount)
+            .map { $0 }
+    }
+
+    private func firstUsefulNoteLine(from notes: String) -> String? {
+        notes
+            .components(separatedBy: CharacterSet.newlines.union(.punctuationCharacters))
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first { !$0.isEmpty }
+    }
+
+    private func shortenedScrapbookLine(_ line: String) -> String {
+        let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count > 18 else { return trimmed }
+        return String(trimmed.prefix(17)) + "..."
+    }
+
+    private func collectScrapbookTags() -> [String] {
+        [
+            recipe.recordKind != .foodRecipe ? recipe.recordKind.localizedName : nil,
+            recipe.difficulty?.localizedName,
+            recipe.cuisine?.localizedName,
+            recipe.cookingTime?.localizedName
+        ].compactMap { $0 }
     }
 
     private var classicThumbnailImage: some View {
@@ -302,25 +684,25 @@ struct RecipeThumbnailView: View {
                     Image(uiImage: uiImage)
                         .resizable()
                         .scaledToFill()
-                        .frame(width: geo.size.width, height: geo.size.width * 3 / 4)
+                        .frame(width: geo.size.width, height: geo.size.width / imageAspectRatio)
                         .clipped()
                 } else {
                     Image(uiImage: uiImage)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: geo.size.width)
+                        .frame(width: geo.size.width, height: geo.size.width / imageAspectRatio)
                 }
             } else {
                 placeholderImage(font: .title3)
             }
         }
-        .aspectRatio(4/3, contentMode: .fit)
+        .aspectRatio(imageAspectRatio, contentMode: .fit)
         .clipShape(UnevenRoundedRectangle(topLeadingRadius: 10, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 10))
     }
 
     private var scrapbookThumbnailImage: some View {
         Color.clear
-            .aspectRatio(4/3, contentMode: .fit)
+            .aspectRatio(imageAspectRatio, contentMode: .fit)
             .overlay {
                 if let data = recipe.cutoutImageData, let uiImage = UIImage(data: data) {
                     TrimmedCutoutImage(
@@ -329,7 +711,8 @@ struct RecipeThumbnailView: View {
                         padding: EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4),
                         shadowOpacity: 0.16,
                         shadowRadius: 5,
-                        shadowY: 3
+                        shadowY: 3,
+                        maxPixelDimension: 900
                     )
                 } else if let data = recipe.imageData, let uiImage = UIImage(data: data) {
                     Image(uiImage: uiImage)
@@ -363,6 +746,7 @@ struct TrimmedCutoutImage: View {
     let shadowOpacity: Double
     let shadowRadius: CGFloat
     let shadowY: CGFloat
+    let maxPixelDimension: CGFloat?
 
     @State private var displayImage: UIImage?
 
@@ -372,7 +756,8 @@ struct TrimmedCutoutImage: View {
         padding: EdgeInsets,
         shadowOpacity: Double,
         shadowRadius: CGFloat,
-        shadowY: CGFloat
+        shadowY: CGFloat,
+        maxPixelDimension: CGFloat? = nil
     ) {
         self.data = data
         self.fallbackImage = fallbackImage
@@ -380,7 +765,8 @@ struct TrimmedCutoutImage: View {
         self.shadowOpacity = shadowOpacity
         self.shadowRadius = shadowRadius
         self.shadowY = shadowY
-        _displayImage = State(initialValue: CutoutImageTrimCache.shared.image(for: data))
+        self.maxPixelDimension = maxPixelDimension
+        _displayImage = State(initialValue: CutoutImageTrimCache.shared.image(for: data, maxPixelDimension: maxPixelDimension))
     }
 
     var body: some View {
@@ -403,7 +789,7 @@ struct TrimmedCutoutImage: View {
             }
         }
             .task(id: data) {
-                if let cachedImage = CutoutImageTrimCache.shared.image(for: data) {
+                if let cachedImage = CutoutImageTrimCache.shared.image(for: data, maxPixelDimension: maxPixelDimension) {
                     withTransaction(Transaction(animation: nil)) {
                         displayImage = cachedImage
                     }
@@ -411,14 +797,14 @@ struct TrimmedCutoutImage: View {
                 }
 
                 let trimmedImage = await Task.detached(priority: .utility) {
-                    UIImage(data: data)?.trimmingTransparentInsets()
+                    UIImage.trimmedCutoutImage(from: data, maxPixelDimension: maxPixelDimension)
                 }.value
 
                 guard let trimmedImage else {
                     return
                 }
 
-                CutoutImageTrimCache.shared.setImage(trimmedImage, for: data)
+                CutoutImageTrimCache.shared.setImage(trimmedImage, for: data, maxPixelDimension: maxPixelDimension)
                 withTransaction(Transaction(animation: nil)) {
                     displayImage = trimmedImage
                 }
@@ -430,33 +816,33 @@ final class CutoutImageTrimCache {
 
     static let shared = CutoutImageTrimCache()
 
-    private let cache = NSCache<NSData, UIImage>()
+    private let cache = NSCache<NSString, UIImage>()
     private let queue = DispatchQueue(label: "caipu.cutout-trim-cache")
-    private var inFlightKeys: Set<NSData> = []
+    private var inFlightKeys: Set<String> = []
 
     private init() {
-        cache.countLimit = 180
+        cache.countLimit = 80
     }
 
-    func image(for data: Data) -> UIImage? {
-        cache.object(forKey: data as NSData)
+    func image(for data: Data, maxPixelDimension: CGFloat?) -> UIImage? {
+        cache.object(forKey: cacheKey(for: data, maxPixelDimension: maxPixelDimension) as NSString)
     }
 
-    func setImage(_ image: UIImage, for data: Data) {
-        cache.setObject(image, forKey: data as NSData)
+    func setImage(_ image: UIImage, for data: Data, maxPixelDimension: CGFloat?) {
+        cache.setObject(image, forKey: cacheKey(for: data, maxPixelDimension: maxPixelDimension) as NSString)
     }
 
-    func prewarm(_ imageDataList: [Data], limit: Int) {
-        let uncachedItems = imageDataList.prefix(limit).filter { image(for: $0) == nil }
+    func prewarm(_ imageDataList: [Data], limit: Int, maxPixelDimension: CGFloat?) {
+        let uncachedItems = imageDataList.prefix(limit).filter { image(for: $0, maxPixelDimension: maxPixelDimension) == nil }
         guard !uncachedItems.isEmpty else { return }
 
         Task.detached(priority: .utility) { [weak self] in
             guard let self else { return }
 
             for data in uncachedItems {
-                let key = data as NSData
+                let key = self.cacheKey(for: data, maxPixelDimension: maxPixelDimension)
                 let shouldStart = queue.sync {
-                    let shouldStart = self.cache.object(forKey: key) == nil && !self.inFlightKeys.contains(key)
+                    let shouldStart = self.cache.object(forKey: key as NSString) == nil && !self.inFlightKeys.contains(key)
                     if shouldStart {
                         self.inFlightKeys.insert(key)
                     }
@@ -470,14 +856,51 @@ final class CutoutImageTrimCache {
                     }
                 }
 
-                guard let image = UIImage(data: data)?.trimmingTransparentInsets() else { continue }
-                cache.setObject(image, forKey: key)
+                guard let image = UIImage.trimmedCutoutImage(from: data, maxPixelDimension: maxPixelDimension) else { continue }
+                cache.setObject(image, forKey: key as NSString)
             }
         }
+    }
+
+    private func cacheKey(for data: Data, maxPixelDimension: CGFloat?) -> String {
+        let dimension = maxPixelDimension.map { Int($0.rounded()) } ?? 0
+        return "\(data.count)-\(data.hashValue)-\(dimension)"
     }
 }
 
 private extension UIImage {
+
+    static func trimmedCutoutImage(from data: Data, maxPixelDimension: CGFloat?) -> UIImage? {
+        autoreleasepool {
+            let image: UIImage?
+            if let maxPixelDimension {
+                image = downsampledImage(from: data, maxPixelDimension: maxPixelDimension)
+            } else {
+                image = UIImage(data: data)
+            }
+            return image?.trimmingTransparentInsets()
+        }
+    }
+
+    static func downsampledImage(from data: Data, maxPixelDimension: CGFloat) -> UIImage? {
+        let options = [kCGImageSourceShouldCache: false] as CFDictionary
+        guard let source = CGImageSourceCreateWithData(data as CFData, options) else {
+            return UIImage(data: data)
+        }
+
+        let downsampleOptions = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: max(1, Int(maxPixelDimension.rounded()))
+        ] as CFDictionary
+
+        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, downsampleOptions) else {
+            return UIImage(data: data)
+        }
+
+        return UIImage(cgImage: cgImage)
+    }
 
     func trimmingTransparentInsets(alphaThreshold: UInt8 = 8) -> UIImage {
         guard let cgImage else { return self }

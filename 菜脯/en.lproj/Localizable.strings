@@ -21,6 +21,11 @@
 "AI 订阅" = "AI Subscription";
 "菜脯 Plus" = "Snap Pickle Plus";
 "外观选择" = "Appearance";
+"语言" = "Language";
+"显示语言" = "Display Language";
+"正在翻译菜谱" = "Translating recipes";
+"切换语言后，界面和已有菜谱都会显示为所选语言。首次切换时需要联网翻译菜谱。" = "The interface and saved recipes use the selected language. An internet connection is needed the first time recipes are translated.";
+"菜谱翻译失败" = "Recipe Translation Failed";
 "支持" = "Support";
 "给菜脯评分" = "Rate Snap Pickle";
 "Support and Feedback" = "Support and Feedback";
@@ -46,7 +51,7 @@
 "如何反馈问题或建议？" = "How do I report a problem or suggestion?";
 "在设置里点击 Support and Feedback，会打开邮件并自动带上 App 版本信息。" = "Tap Support and Feedback in Settings to open an email that includes the app version.";
 
-"当前 UI 风格" = "Classic";
+"经典照片风格" = "Classic Photo";
 "手帐贴纸风格" = "Scrapbook";
 "保留现在的首页照片卡片效果。" = "Keep the current photo-card layout on the home screen.";
 "首页使用笔记本背景，并优先展示透明抠图。" = "Use a notebook background and show cutout stickers when available.";
@@ -234,3 +239,6 @@
 "识别结果解析失败：%@" = "Could not parse the recognition result: %@";
 "请求过于频繁，请稍后再试" = "Too many requests. Please try again later.";
 "从相册选" = "Choose from Library";
+"宝宝餐" = "Baby Meal";
+"宝宝日常" = "Baby Daily";
+"生活手帐" = "Scrapbook";

@@ -2,6 +2,13 @@ import Foundation
 
 enum AppearancePreference: String, CaseIterable, Identifiable {
     static let storageKey = "appearancePreference"
+    static let defaultPreference: AppearancePreference = .scrapbook
+    static let defaultRawValue = defaultPreference.rawValue
+
+    static let displayOrder: [AppearancePreference] = [
+        .scrapbook,
+        .classic
+    ]
 
     case classic
     case scrapbook
@@ -11,7 +18,7 @@ enum AppearancePreference: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .classic:
-            AppLocalization.text("当前 UI 风格")
+            AppLocalization.text("经典照片风格")
         case .scrapbook:
             AppLocalization.text("手帐贴纸风格")
         }

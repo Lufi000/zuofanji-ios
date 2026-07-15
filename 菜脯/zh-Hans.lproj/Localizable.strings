@@ -2,3 +2,11 @@
  Chinese UI strings use their Chinese source keys as the displayed values.
  Keeping this table present prevents dynamic lookups from falling back to English.
 */
+"语言" = "语言";
+"显示语言" = "显示语言";
+"正在翻译菜谱" = "正在翻译菜谱";
+"切换语言后，界面和已有菜谱都会显示为所选语言。首次切换时需要联网翻译菜谱。" = "切换语言后，界面和已有菜谱都会显示为所选语言。首次切换时需要联网翻译菜谱。";
+"菜谱翻译失败" = "菜谱翻译失败";
+"宝宝餐" = "宝宝餐";
+"宝宝日常" = "宝宝日常";
+"生活手帐" = "生活手帐";

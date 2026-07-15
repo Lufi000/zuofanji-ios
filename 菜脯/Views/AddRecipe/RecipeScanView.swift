@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// 拍照/选图后的全屏扫描过渡页。
-/// 并行执行：AI 菜谱识别 + Vision 抠图（cutout + outline）。
+/// 并行执行：AI 内容整理 + Vision 抠图（cutout + outline）。
 /// AI 识别失败会弹错误提示；抠图失败静默降级（cutoutImage 为 nil，不影响主流程）。
 struct RecipeScanView: View {
 
@@ -10,25 +10,24 @@ struct RecipeScanView: View {
     let resultContainer: ScanResultContainer
     var onOpenSubscription: () -> Void = {}
 
-    @State private var errorMessage: String?
-    @State private var isSubscriptionError = false
-    @State private var showError = false
     @State private var analysisTask: Task<Void, Never>?
     @State private var progressTask: Task<Void, Never>?
+    @State private var contourPreviewTask: Task<Void, Never>?
     @State private var scanStep: ScanStep = .preparingImage
     @State private var progressPercent = 0
+    @State private var tracingContourImage: UIImage?
 
     @EnvironmentObject private var subscriptionStore: SubscriptionStore
     @Environment(\.dismiss) private var dismiss
 
     private var image: UIImage? { UIImage(data: imageData) }
 
-    private let cutoutService: ImageCutoutService = {
+    private nonisolated static func makeCutoutService() -> ImageCutoutService {
         let service = ImageCutoutService()
         service.featherRadius = 1.5
         service.edgeErosionRadius = 1.0
         return service
-    }()
+    }
 
     var body: some View {
         ZStack {
@@ -38,7 +37,8 @@ struct RecipeScanView: View {
                     statusText: scanStep.statusText,
                     currentStep: scanStep.rawValue,
                     totalSteps: ScanStep.allCases.count,
-                    progressPercent: progressPercent
+                    progressPercent: progressPercent,
+                    tracingContourImage: tracingContourImage
                 )
                     .ignoresSafeArea()
             } else {
@@ -50,7 +50,8 @@ struct RecipeScanView: View {
                     Spacer()
                     Button {
                         analysisTask?.cancel()
-                        resultContainer.cancelled = true
+                        contourPreviewTask?.cancel()
+                        resultContainer.cancel()
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
@@ -65,43 +66,23 @@ struct RecipeScanView: View {
                 Spacer()
             }
         }
-        .alert(AppLocalization.text(isSubscriptionError ? "需要 菜脯 Plus" : "AI 识别暂不可用"), isPresented: $showError) {
-            if isSubscriptionError {
-                Button("去订阅") {
-                    resultContainer.cancelled = true
-                    onOpenSubscription()
-                    dismiss()
-                }
-            } else {
-                Button("重试") {
-                    startAnalysis()
-                }
-            }
-            Button("手动填写", role: .cancel) {
-                resultContainer.suggestion = RecipeAISuggestion()
-                resultContainer.aiUnavailableMessage = errorMessage
-                dismiss()
-            }
-        } message: {
-            if isSubscriptionError {
-                Text(errorMessage ?? AppLocalization.text("开通后即可使用 AI 识别。"))
-            } else {
-                Text("你仍然可以继续添加照片，并手动填写菜名、原材料和做法。\n\n\(errorMessage ?? "")")
-            }
-        }
         .onAppear {
             startAnalysis()
         }
         .onDisappear {
             analysisTask?.cancel()
             progressTask?.cancel()
+            contourPreviewTask?.cancel()
         }
     }
 
     private func startAnalysis() {
         analysisTask?.cancel()
         progressTask?.cancel()
-        isSubscriptionError = false
+        contourPreviewTask?.cancel()
+        tracingContourImage = nil
+        resultContainer.cancelled = false
+        resultContainer.beginAI()
         scanStep = .preparingImage
         progressPercent = 4
         progressTask = Task { @MainActor in
@@ -118,46 +99,62 @@ struct RecipeScanView: View {
             scanStep = .uploadingImage
             progressPercent = max(progressPercent, scanStep.progressFloor)
             let cutoutTask = Task.detached(priority: .userInitiated) {
-                await self.cutoutService.extractForeground(from: image)
+                let service = Self.makeCutoutService()
+                return await service.extractForeground(from: image)
             }
             let outlineTask = Task.detached(priority: .userInitiated) {
-                await self.cutoutService.generateStickerOutline(from: image, outlineWidth: 28)
+                let service = Self.makeCutoutService()
+                let outline = await service.generateStickerOutline(from: image, outlineWidth: 28)
+                let contour = outline.flatMap {
+                    service.generateTracingContour(from: $0, width: 10)
+                }
+                return (outline: outline, contour: contour)
+            }
+            contourPreviewTask = Task { @MainActor in
+                let outlineResult = await outlineTask.value
+                guard !Task.isCancelled else { return }
+                tracingContourImage = outlineResult.contour
             }
 
-            // AI 识别（主流程，失败需提示）
+            startAIAnalysis(for: image)
+
+            // 抠图是进入详情页的门槛，AI 会在详情页继续更新。
             let recognitionProgressTask = Task { @MainActor in
                 await advanceRecognitionSteps()
             }
+            scanStep = .makingSticker
+            progressPercent = max(progressPercent, scanStep.progressFloor)
+            let cutout = await cutoutTask.value
+            let outlineResult = await outlineTask.value
+            guard !Task.isCancelled else {
+                recognitionProgressTask.cancel()
+                return
+            }
+            recognitionProgressTask.cancel()
+            scanStep = .organizingRecipe
+            progressPercent = 100
+            resultContainer.setCutout(cutout, outlineImage: outlineResult.outline)
+            tracingContourImage = outlineResult.contour
+            dismiss()
+        }
+    }
+
+    private func startAIAnalysis(for image: UIImage) {
+        resultContainer.aiTask?.cancel()
+        resultContainer.aiTask = Task { @MainActor in
             do {
                 try subscriptionStore.validateAIRequestAccess()
                 let suggestion = try await RecipeAIService().analyze(image: image)
                 subscriptionStore.recordSuccessfulAIRequest()
                 guard !Task.isCancelled else { return }
-                recognitionProgressTask.cancel()
-
-                // 等待抠图完成（AI 通常更慢，大概率已完成）
-                scanStep = .makingSticker
-                progressPercent = max(progressPercent, scanStep.progressFloor)
-                let cutout = await cutoutTask.value
-                let outline = await outlineTask.value
-
-                scanStep = .organizingRecipe
-                progressPercent = 100
-                resultContainer.suggestion = suggestion
-                resultContainer.aiUnavailableMessage = nil
-                resultContainer.cutoutImage = cutout
-                resultContainer.outlineImage = outline
-                dismiss()
+                resultContainer.finishAI(with: suggestion)
             } catch {
                 guard !Task.isCancelled else { return }
-                recognitionProgressTask.cancel()
-                progressTask?.cancel()
-                // 即使 AI 失败，也保存已完成的抠图结果
-                resultContainer.cutoutImage = await cutoutTask.value
-                resultContainer.outlineImage = await outlineTask.value
-                isSubscriptionError = error is AISubscriptionAccessError
-                errorMessage = (error as? RecipeAIError)?.errorDescription ?? error.localizedDescription
-                showError = true
+                let message = (error as? RecipeAIError)?.errorDescription ?? error.localizedDescription
+                resultContainer.failAI(
+                    message: message,
+                    shouldShowSubscriptionPrompt: error is AISubscriptionAccessError
+                )
             }
         }
     }
@@ -183,8 +180,8 @@ struct RecipeScanView: View {
     @MainActor
     private func advanceRecognitionSteps() async {
         let updates: [(seconds: UInt64, step: ScanStep)] = [
-            (2, .identifyingDish),
-            (5, .extractingIngredients),
+            (2, .understandingPhoto),
+            (5, .collectingDetails),
             (6, .draftingSteps)
         ]
 
@@ -208,8 +205,8 @@ struct RecipeScanView: View {
 private enum ScanStep: Int, CaseIterable {
     case preparingImage = 1
     case uploadingImage
-    case identifyingDish
-    case extractingIngredients
+    case understandingPhoto
+    case collectingDetails
     case draftingSteps
     case makingSticker
     case organizingRecipe
@@ -217,19 +214,19 @@ private enum ScanStep: Int, CaseIterable {
     var statusText: String {
         switch self {
         case .preparingImage:
-            return AppLocalization.text("正在处理照片…")
+            return AppLocalization.text("我先把照片里的重点找出来")
         case .uploadingImage:
-            return AppLocalization.text("正在上传图片…")
-        case .identifyingDish:
-            return AppLocalization.text("正在识别菜品和菜系…")
-        case .extractingIngredients:
-            return AppLocalization.text("正在提取食材和用量…")
+            return AppLocalization.text("这张图有点意思，正在慢慢看")
+        case .understandingPhoto:
+            return AppLocalization.text("先把主角贴出来，文字马上补上")
+        case .collectingDetails:
+            return AppLocalization.text("我在帮你整理成一页记录")
         case .draftingSteps:
-            return AppLocalization.text("正在生成做法步骤…")
+            return AppLocalization.text("正在把可用的信息写下来")
         case .makingSticker:
-            return AppLocalization.text("正在生成菜品贴纸…")
+            return AppLocalization.text("贴纸准备好了，文字继续整理")
         case .organizingRecipe:
-            return AppLocalization.text("正在整理菜谱信息…")
+            return AppLocalization.text("马上整理好这一页")
         }
     }
 
@@ -239,9 +236,9 @@ private enum ScanStep: Int, CaseIterable {
             return 4
         case .uploadingImage:
             return 12
-        case .identifyingDish:
+        case .understandingPhoto:
             return 28
-        case .extractingIngredients:
+        case .collectingDetails:
             return 52
         case .draftingSteps:
             return 72
@@ -258,9 +255,9 @@ private enum ScanStep: Int, CaseIterable {
             return 10
         case .uploadingImage:
             return 24
-        case .identifyingDish:
+        case .understandingPhoto:
             return 48
-        case .extractingIngredients:
+        case .collectingDetails:
             return 68
         case .draftingSteps:
             return 88
