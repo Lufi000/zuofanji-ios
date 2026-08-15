@@ -184,14 +184,19 @@
 "Plus 已启用" = "Plus Active";
 "选择 菜脯 Plus 套餐" = "Choose a Snap Pickle Plus Plan";
 "持续使用云端 AI 菜谱识别服务。连续包月更优惠，新用户可享前三天免费试用；单月套餐不自动续订。两种套餐都包含每月 %lld 次、每天最多 %lld 次 AI 识别。" = "Keep using cloud AI recipe recognition. The monthly subscription offers better value and a three-day free trial for new users; the one-month pass does not renew automatically. Both plans include %lld AI requests per month and up to %lld per day.";
+"免费用户每月可用 %d 次、每天最多 %d 次 AI 识别。开通 菜脯 Plus 后，每月可用 %d 次、每天最多 %d 次；连续包月更优惠，新用户可享前三天免费试用，单月套餐不自动续订。" = "Free users get %d AI requests per month and up to %d per day. Snap Pickle Plus raises that to %d per month and up to %d per day; the monthly subscription offers better value with a three-day free trial for new users, and the one-month pass does not renew automatically.";
 "本月 AI 额度" = "Monthly AI Allowance";
 "已用 %lld 次，订阅有效期内下个账单周期自动恢复到 %lld 次。" = "%lld used. Your allowance resets to %lld at the next billing period while your plan is active.";
+"已用 %d 次，订阅有效期内下个账单周期自动恢复到 %d 次。" = "%d used. Your allowance resets to %d at the next billing period while your plan is active.";
+"已用 %d 次，免费额度每月恢复到 %d 次；开通 Plus 后可提升到 %d 次。" = "%d used. Your free allowance resets to %d each month; Plus raises it to %d.";
 "今日剩余" = "Remaining Today";
 "单月套餐有效至 %@。" = "One-month pass valid through %@.";
 "拍照识别菜品、食材和做法" = "Recognize dishes, ingredients, and directions from a photo";
 "根据菜名重新生成原材料和步骤" = "Regenerate ingredients and steps from a dish name";
+"免费用户每天 %d 次、每月 %d 次" = "Free users get %d per day and %d per month";
 "连续包月自动续订，单月套餐到期后手动续费" = "Monthly subscription renews automatically; renew the one-month pass manually";
 "每天最多 %lld 次，保障稳定服务" = "Up to %lld requests per day for reliable service";
+"Plus 每天最多 %d 次，保障稳定服务" = "Plus includes up to %d requests per day for reliable service";
 "云端 AI 推理服务由我们持续维护" = "Cloud AI processing is continuously maintained";
 "连续包月（自动续订）" = "Monthly Subscription";
 "新用户前三天免费试用，之后每月自动续订，可随时在 App Store 管理" = "Three-day free trial for new users, then renews monthly. Manage anytime in the App Store.";
@@ -215,7 +220,10 @@
 
 "开通 菜脯 Plus 后即可使用 AI 识别。" = "Subscribe to Snap Pickle Plus to use AI recognition.";
 "本月 AI 识别额度已用完。额度会在下个订阅周期自动刷新。" = "You have used all AI requests for this billing period. Your allowance will reset at the next billing period.";
+"本月 AI 识别额度已用完。Plus 每月最多可使用 %d 次，额度会在下个订阅周期自动刷新。" = "You have used all AI requests for this billing period. Plus includes up to %d requests per month, and your allowance will reset at the next billing period.";
+"本月免费 AI 识别额度已用完。免费用户每月最多可使用 %d 次，开通 菜脯 Plus 可获得更多额度。" = "You have used all free AI requests for this month. Free users get up to %d requests per month; Snap Pickle Plus includes more.";
 "今天的 AI 识别额度已用完。每天最多可使用 %d 次，请明天再试。" = "You have used today's AI allowance of %d requests. Please try again tomorrow.";
+"今天的免费 AI 识别额度已用完。免费用户每天最多可使用 %d 次，请明天再试。" = "You have used today's free AI allowance of %d requests. Please try again tomorrow.";
 "载入 App Store 套餐信息超时，请稍后重试" = "Loading App Store plan information timed out. Please try again later.";
 "无法从 App Store 载入订阅信息，请检查网络后重试" = "Could not load subscription information from the App Store. Check your connection and try again.";
 "连续包月订阅信息暂时不可用，请稍后重试" = "The monthly subscription is currently unavailable. Please try again later.";

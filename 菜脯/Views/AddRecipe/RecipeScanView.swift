@@ -153,7 +153,7 @@ struct RecipeScanView: View {
                 let message = (error as? RecipeAIError)?.errorDescription ?? error.localizedDescription
                 resultContainer.failAI(
                     message: message,
-                    shouldShowSubscriptionPrompt: error is AISubscriptionAccessError
+                    shouldShowSubscriptionPrompt: !subscriptionStore.hasActiveAIPlan && error is AISubscriptionAccessError
                 )
             }
         }

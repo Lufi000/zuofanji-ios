@@ -51,7 +51,13 @@ struct SubscriptionView: View {
                 .fontWeight(.bold)
                 .foregroundStyle(AppTheme.titleText)
 
-            Text("持续使用云端 AI 菜谱识别服务。连续包月更优惠，新用户可享前三天免费试用；单月套餐不自动续订。两种套餐都包含每月 \(SubscriptionStore.monthlyAIQuota) 次、每天最多 \(SubscriptionStore.dailyAIQuota) 次 AI 识别。")
+            Text(AppLocalization.format(
+                "免费用户每月可用 %d 次、每天最多 %d 次 AI 识别。开通 菜脯 Plus 后，每月可用 %d 次、每天最多 %d 次；连续包月更优惠，新用户可享前三天免费试用，单月套餐不自动续订。",
+                SubscriptionStore.freeMonthlyAIQuota,
+                SubscriptionStore.freeDailyAIQuota,
+                SubscriptionStore.plusMonthlyAIQuota,
+                SubscriptionStore.plusDailyAIQuota
+            ))
                 .font(.subheadline)
                 .foregroundStyle(AppTheme.bodyText)
                 .multilineTextAlignment(.center)
@@ -76,11 +82,11 @@ struct SubscriptionView: View {
 
             ProgressView(
                 value: Double(subscriptionStore.usedAIRequestsThisMonth),
-                total: Double(SubscriptionStore.monthlyAIQuota)
+                total: Double(subscriptionStore.currentMonthlyAIQuota)
             )
             .tint(AppTheme.accent)
 
-            Text("已用 \(subscriptionStore.usedAIRequestsThisMonth) 次，订阅有效期内下个账单周期自动恢复到 \(SubscriptionStore.monthlyAIQuota) 次。")
+            Text(monthlyQuotaDescription)
                 .font(.footnote)
                 .foregroundStyle(AppTheme.bodyText)
                 .fixedSize(horizontal: false, vertical: true)
@@ -92,7 +98,7 @@ struct SubscriptionView: View {
                     .font(.subheadline)
                     .foregroundStyle(AppTheme.bodyText)
                 Spacer()
-                Text("\(subscriptionStore.remainingAIRequestsToday) / \(SubscriptionStore.dailyAIQuota)")
+                Text("\(subscriptionStore.remainingAIRequestsToday) / \(subscriptionStore.currentDailyAIQuota)")
                     .font(.subheadline)
                     .fontWeight(.semibold)
                     .foregroundStyle(AppTheme.titleText)
@@ -114,11 +120,25 @@ struct SubscriptionView: View {
 
     private var benefitsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            benefitRow("camera.viewfinder", "拍照识别菜品、食材和做法")
-            benefitRow("text.badge.checkmark", "根据菜名重新生成原材料和步骤")
-            benefitRow("arrow.clockwise", "连续包月自动续订，单月套餐到期后手动续费")
-            benefitRow("clock", "每天最多 \(SubscriptionStore.dailyAIQuota) 次，保障稳定服务")
-            benefitRow("icloud", "云端 AI 推理服务由我们持续维护")
+            benefitRow("camera.viewfinder", AppLocalization.text("拍照识别菜品、食材和做法"))
+            benefitRow("text.badge.checkmark", AppLocalization.text("根据菜名重新生成原材料和步骤"))
+            benefitRow(
+                "gift",
+                AppLocalization.format(
+                    "免费用户每天 %d 次、每月 %d 次",
+                    SubscriptionStore.freeDailyAIQuota,
+                    SubscriptionStore.freeMonthlyAIQuota
+                )
+            )
+            benefitRow("arrow.clockwise", AppLocalization.text("连续包月自动续订，单月套餐到期后手动续费"))
+            benefitRow(
+                "clock",
+                AppLocalization.format(
+                    "Plus 每天最多 %d 次，保障稳定服务",
+                    SubscriptionStore.plusDailyAIQuota
+                )
+            )
+            benefitRow("icloud", AppLocalization.text("云端 AI 推理服务由我们持续维护"))
         }
         .padding(16)
         .background(AppTheme.cardBackground)
@@ -130,11 +150,27 @@ struct SubscriptionView: View {
             Image(systemName: systemImage)
                 .foregroundStyle(AppTheme.accent)
                 .frame(width: 24)
-            Text(LocalizedStringKey(text))
+            Text(text)
                 .font(.subheadline)
                 .foregroundStyle(AppTheme.titleText)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private var monthlyQuotaDescription: String {
+        if subscriptionStore.hasActiveAIPlan {
+            return AppLocalization.format(
+                "已用 %d 次，订阅有效期内下个账单周期自动恢复到 %d 次。",
+                subscriptionStore.usedAIRequestsThisMonth,
+                subscriptionStore.currentMonthlyAIQuota
+            )
+        }
+        return AppLocalization.format(
+            "已用 %d 次，免费额度每月恢复到 %d 次；开通 Plus 后可提升到 %d 次。",
+            subscriptionStore.usedAIRequestsThisMonth,
+            subscriptionStore.currentMonthlyAIQuota,
+            SubscriptionStore.plusMonthlyAIQuota
+        )
     }
 
     private var planPicker: some View {

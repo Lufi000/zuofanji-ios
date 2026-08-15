@@ -12,27 +12,38 @@ enum SubscriptionProductIDs {
 // MARK: - AI Quotas
 
 enum AISubscriptionQuota {
-    static let monthly = 100
-    static let daily = 20
+    static let freeMonthly = 50
+    static let freeDaily = 10
+    static let plusMonthly = 100
+    static let plusDaily = 20
 }
 
 // MARK: - AI Subscription Entitlement
 
 enum AISubscriptionAccessError: LocalizedError {
-    case subscriptionRequired
-    case monthlyQuotaExceeded
-    case dailyQuotaExceeded
+    case monthlyQuotaExceeded(limit: Int, hasActivePlan: Bool)
+    case dailyQuotaExceeded(limit: Int, hasActivePlan: Bool)
 
     var errorDescription: String? {
         switch self {
-        case .subscriptionRequired:
-            return AppLocalization.text("开通 菜脯 Plus 后即可使用 AI 识别。")
-        case .monthlyQuotaExceeded:
-            return AppLocalization.text("本月 AI 识别额度已用完。额度会在下个订阅周期自动刷新。")
-        case .dailyQuotaExceeded:
+        case .monthlyQuotaExceeded(let limit, let hasActivePlan):
+            if hasActivePlan {
+                return AppLocalization.format(
+                    "本月 AI 识别额度已用完。Plus 每月最多可使用 %d 次，额度会在下个订阅周期自动刷新。",
+                    limit
+                )
+            }
             return AppLocalization.format(
-                "今天的 AI 识别额度已用完。每天最多可使用 %d 次，请明天再试。",
-                AISubscriptionQuota.daily
+                "本月免费 AI 识别额度已用完。免费用户每月最多可使用 %d 次，开通 菜脯 Plus 可获得更多额度。",
+                limit
+            )
+        case .dailyQuotaExceeded(let limit, let hasActivePlan):
+            let key = hasActivePlan
+                ? "今天的 AI 识别额度已用完。每天最多可使用 %d 次，请明天再试。"
+                : "今天的免费 AI 识别额度已用完。免费用户每天最多可使用 %d 次，请明天再试。"
+            return AppLocalization.format(
+                key,
+                limit
             )
         }
     }
@@ -50,8 +61,10 @@ final class SubscriptionStore: ObservableObject {
         case failed(String)
     }
 
-    static let monthlyAIQuota = AISubscriptionQuota.monthly
-    static let dailyAIQuota = AISubscriptionQuota.daily
+    static let freeMonthlyAIQuota = AISubscriptionQuota.freeMonthly
+    static let freeDailyAIQuota = AISubscriptionQuota.freeDaily
+    static let plusMonthlyAIQuota = AISubscriptionQuota.plusMonthly
+    static let plusDailyAIQuota = AISubscriptionQuota.plusDaily
 
     @Published private(set) var products: [Product] = []
     @Published private(set) var purchasedProductIDs: Set<String> = []
@@ -101,7 +114,7 @@ final class SubscriptionStore: ObservableObject {
     }
 
     var remainingAIRequestsThisMonth: Int {
-        max(Self.monthlyAIQuota - usedAIRequestsThisMonth, 0)
+        max(currentMonthlyAIQuota - usedAIRequestsThisMonth, 0)
     }
 
     var usedAIRequestsToday: Int {
@@ -110,7 +123,15 @@ final class SubscriptionStore: ObservableObject {
     }
 
     var remainingAIRequestsToday: Int {
-        max(Self.dailyAIQuota - usedAIRequestsToday, 0)
+        max(currentDailyAIQuota - usedAIRequestsToday, 0)
+    }
+
+    var currentMonthlyAIQuota: Int {
+        hasActiveAIPlan ? Self.plusMonthlyAIQuota : Self.freeMonthlyAIQuota
+    }
+
+    var currentDailyAIQuota: Int {
+        hasActiveAIPlan ? Self.plusDailyAIQuota : Self.freeDailyAIQuota
     }
 
     init() {
@@ -227,14 +248,17 @@ final class SubscriptionStore: ObservableObject {
     }
 
     func validateAIRequestAccess() throws {
-        guard hasActiveAIPlan else {
-            throw AISubscriptionAccessError.subscriptionRequired
-        }
         guard remainingAIRequestsThisMonth > 0 else {
-            throw AISubscriptionAccessError.monthlyQuotaExceeded
+            throw AISubscriptionAccessError.monthlyQuotaExceeded(
+                limit: currentMonthlyAIQuota,
+                hasActivePlan: hasActiveAIPlan
+            )
         }
         guard remainingAIRequestsToday > 0 else {
-            throw AISubscriptionAccessError.dailyQuotaExceeded
+            throw AISubscriptionAccessError.dailyQuotaExceeded(
+                limit: currentDailyAIQuota,
+                hasActivePlan: hasActiveAIPlan
+            )
         }
     }
 

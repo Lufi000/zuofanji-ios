@@ -97,7 +97,7 @@ final class AddRecipeViewModel {
             subscriptionStore.recordSuccessfulAIRequest()
             applyAISuggestion(suggestion)
         } catch {
-            shouldShowSubscriptionPrompt = error is AISubscriptionAccessError
+            shouldShowSubscriptionPrompt = !subscriptionStore.hasActiveAIPlan && error is AISubscriptionAccessError
             aiError = (error as? RecipeAIError)?.errorDescription ?? error.localizedDescription
         }
 
