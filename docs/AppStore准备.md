@@ -3,7 +3,7 @@
 ## 已在工程内处理
 
 - **Bundle ID**：`com.lufi000.zuofanji`（应用改名不改变 Bundle ID；Xcode / `project.yml` / App Store Connect 三处需保持一致）。
-- **版本**：Marketing `1.0.1`，Build `3`；`Info.plist` 使用 `$(MARKETING_VERSION)` / `$(CURRENT_PROJECT_VERSION)`，与 Xcode 一致。
+- **版本**：Marketing `1.0.3`，Build `3`；`Info.plist` 使用 `$(MARKETING_VERSION)` / `$(CURRENT_PROJECT_VERSION)`，与 Xcode 一致。
 - **出口合规**：`ITSAppUsesNonExemptEncryption = false`（仅标准 HTTPS，无自定义加密时与 Connect 问卷常见选项一致）。
 - **权限文案**：相机/相册说明中补充「可选用于识别菜谱」，与实际上传图片至阿里云做识图一致。
 - **隐私清单**：`菜脯/Resources/PrivacyInfo.xcprivacy` 已加入 target，声明不追踪；收集类型含「照片或视频」、用途为 App 功能。请在 **App Store Connect → App 隐私** 中填写与之一致或更细化的说明（含与第三方共享、阿里云等）。

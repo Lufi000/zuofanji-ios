@@ -10,6 +10,7 @@ struct RecipeDetailView: View {
     @State private var showEditSheet = false
     @State private var showDeleteConfirmation = false
     @AppStorage(AppearancePreference.storageKey) private var appearancePreferenceRawValue = AppearancePreference.defaultRawValue
+    @AppStorage(StickerEffectStyle.storageKey) private var stickerEffectStyleRawValue = StickerEffectStyle.defaultRawValue
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -71,6 +72,10 @@ struct RecipeDetailView: View {
         appearancePreference == .scrapbook
     }
 
+    private var stickerEffectStyle: StickerEffectStyle {
+        StickerEffectStyle(rawValue: stickerEffectStyleRawValue) ?? .defaultStyle
+    }
+
     private var toolbarBackground: Color {
         isScrapbook ? AppTheme.notebookPaper : AppTheme.background
     }
@@ -106,7 +111,8 @@ struct RecipeDetailView: View {
                     padding: EdgeInsets(top: 24, leading: 24, bottom: 24, trailing: 24),
                     shadowOpacity: 0.12,
                     shadowRadius: 10,
-                    shadowY: 5
+                    shadowY: 5,
+                    effectStyle: stickerEffectStyle
                 )
             }
         } else if let uiImage = dishDisplayImage {

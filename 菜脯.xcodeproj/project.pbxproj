@@ -48,6 +48,7 @@
 		E7AF211D23B218D622B05130 /* OFL-KiwiMaru.txt in Resources */ = {isa = PBXBuildFile; fileRef = 9D88672E7307ED3E58537A02 /* OFL-KiwiMaru.txt */; };
 		E7C4519F797408580EE26E38 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B71CBF15AD69BC61671AD90 /* AppTheme.swift */; };
 		EC35A8F03768DF09DE6205E4 /* RecipeAIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BCD2D4CCAA77742B6FABD8D /* RecipeAIService.swift */; };
+		F01A012EA8B2D77C28EECBCD /* StickerEffectStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = F01A012EA8B2D77C28EECBCC /* StickerEffectStyle.swift */; };
 		F26D415A0A441C9364296FDF /* SubscriptionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 373C50FD378F1FBE321C52B7 /* SubscriptionView.swift */; };
 /* End PBXBuildFile section */
 
@@ -96,6 +97,7 @@
 		E3361779067BB913912F7644 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		E3F23F7450226146959FC6EA /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		ED7BF30057BAD2BC16148A18 /* ScanningOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanningOverlayView.swift; sourceTree = "<group>"; };
+		F01A012EA8B2D77C28EECBCC /* StickerEffectStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickerEffectStyle.swift; sourceTree = "<group>"; };
 		F54218275ECBA12961E2B616 /* PlaywriteGBSGuides-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PlaywriteGBSGuides-Regular.ttf"; sourceTree = "<group>"; };
 		F5C4D51BBE85829B4B119EA1 /* MaShanZheng-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "MaShanZheng-Regular.ttf"; sourceTree = "<group>"; };
 		FBB440D1BE1BEC2947429209 /* RecipeScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeScanView.swift; sourceTree = "<group>"; };
@@ -212,6 +214,7 @@
 			children = (
 				58A4A944D225DD3B04EE6929 /* AppearancePreference.swift */,
 				6B71CBF15AD69BC61671AD90 /* AppTheme.swift */,
+				F01A012EA8B2D77C28EECBCC /* StickerEffectStyle.swift */,
 			);
 			path = Theme;
 			sourceTree = "<group>";
@@ -379,6 +382,7 @@
 				37982EEA21EF0259CAC860D1 /* ScanResultContainer.swift in Sources */,
 				AAA2B2F24AB7D2968E916719 /* ScanningOverlayView.swift in Sources */,
 				23A9D26C430857FC4324DEBA /* SettingsView.swift in Sources */,
+				F01A012EA8B2D77C28EECBCD /* StickerEffectStyle.swift in Sources */,
 				514BB68F3019A604454A9D51 /* StickerImageView.swift in Sources */,
 				794D0BB6BBB53F5DB9D821E1 /* SubscriptionStore.swift in Sources */,
 				F26D415A0A441C9364296FDF /* SubscriptionView.swift in Sources */,

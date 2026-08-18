@@ -10,6 +10,7 @@ struct RecipeCardView: View {
 
     let recipe: Recipe
     let appearancePreference: AppearancePreference
+    let stickerEffectStyle: StickerEffectStyle
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -126,6 +127,7 @@ struct RecipeCardView: View {
                         shadowOpacity: 0.18,
                         shadowRadius: 8,
                         shadowY: 5,
+                        effectStyle: stickerEffectStyle,
                         maxPixelDimension: 1400
                     )
                 } else if let data = recipe.imageData, let uiImage = UIImage(data: data) {
@@ -254,6 +256,7 @@ struct RecipeThumbnailView: View {
 
     let recipe: Recipe
     let appearancePreference: AppearancePreference
+    let stickerEffectStyle: StickerEffectStyle
     var collageIndex: Int = 0
     var imageAspectRatio: CGFloat = 4 / 3
     var usesScrapbookJitter: Bool = true
@@ -712,6 +715,7 @@ struct RecipeThumbnailView: View {
                         shadowOpacity: 0.16,
                         shadowRadius: 5,
                         shadowY: 3,
+                        effectStyle: stickerEffectStyle,
                         maxPixelDimension: 900
                     )
                 } else if let data = recipe.imageData, let uiImage = UIImage(data: data) {
@@ -746,6 +750,7 @@ struct TrimmedCutoutImage: View {
     let shadowOpacity: Double
     let shadowRadius: CGFloat
     let shadowY: CGFloat
+    let effectStyle: StickerEffectStyle
     let maxPixelDimension: CGFloat?
 
     @State private var displayImage: UIImage?
@@ -757,6 +762,7 @@ struct TrimmedCutoutImage: View {
         shadowOpacity: Double,
         shadowRadius: CGFloat,
         shadowY: CGFloat,
+        effectStyle: StickerEffectStyle = .whiteOutline,
         maxPixelDimension: CGFloat? = nil
     ) {
         self.data = data
@@ -765,6 +771,7 @@ struct TrimmedCutoutImage: View {
         self.shadowOpacity = shadowOpacity
         self.shadowRadius = shadowRadius
         self.shadowY = shadowY
+        self.effectStyle = effectStyle
         self.maxPixelDimension = maxPixelDimension
         _displayImage = State(initialValue: CutoutImageTrimCache.shared.image(for: data, maxPixelDimension: maxPixelDimension))
     }
@@ -772,11 +779,20 @@ struct TrimmedCutoutImage: View {
     var body: some View {
         Group {
             if let displayImage {
-                Image(uiImage: displayImage)
-                    .resizable()
-                    .scaledToFit()
+                if effectStyle == .plainCutout {
+                    Image(uiImage: displayImage)
+                        .resizable()
+                        .scaledToFit()
+                        .padding(padding)
+                        .shadow(color: .black.opacity(shadowOpacity), radius: shadowRadius, x: 0, y: shadowY)
+                } else {
+                    StickerImageView(
+                        cutoutImage: displayImage,
+                        outlineImage: nil,
+                        effectStyle: effectStyle
+                    )
                     .padding(padding)
-                    .shadow(color: .black.opacity(shadowOpacity), radius: shadowRadius, x: 0, y: shadowY)
+                }
             } else {
                 Color.clear
                     .overlay {

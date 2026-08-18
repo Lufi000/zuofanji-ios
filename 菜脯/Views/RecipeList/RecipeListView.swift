@@ -41,6 +41,7 @@ struct RecipeListView: View {
     @State private var showFilterSheet = false
     @State private var navigationPath = NavigationPath()
     @AppStorage(AppearancePreference.storageKey) private var appearancePreferenceRawValue = AppearancePreference.defaultRawValue
+    @AppStorage(StickerEffectStyle.storageKey) private var stickerEffectStyleRawValue = StickerEffectStyle.defaultRawValue
 
     // MARK: - Data
 
@@ -118,7 +119,11 @@ struct RecipeListView: View {
         LazyVStack(spacing: 16) {
             ForEach(filteredRecipes) { recipe in
                 NavigationLink(value: recipe) {
-                    RecipeCardView(recipe: recipe, appearancePreference: appearancePreference)
+                    RecipeCardView(
+                        recipe: recipe,
+                        appearancePreference: appearancePreference,
+                        stickerEffectStyle: stickerEffectStyle
+                    )
                 }
                 .buttonStyle(.plain)
                 .contextMenu {
@@ -202,6 +207,7 @@ struct RecipeListView: View {
             RecipeThumbnailView(
                 recipe: recipe,
                 appearancePreference: appearancePreference,
+                stickerEffectStyle: stickerEffectStyle,
                 collageIndex: index,
                 imageAspectRatio: imageAspectRatio,
                 usesScrapbookJitter: usesScrapbookJitter,
@@ -241,6 +247,10 @@ struct RecipeListView: View {
 
     private var appearancePreference: AppearancePreference {
         AppearancePreference(rawValue: appearancePreferenceRawValue) ?? .defaultPreference
+    }
+
+    private var stickerEffectStyle: StickerEffectStyle {
+        StickerEffectStyle(rawValue: stickerEffectStyleRawValue) ?? .defaultStyle
     }
 
     private var toolbarBackground: Color {

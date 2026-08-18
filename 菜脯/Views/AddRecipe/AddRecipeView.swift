@@ -128,6 +128,7 @@ struct AddRecipeView: View {
     @State private var showSubscription = false
     @State private var listEditor: RecipeListEditor?
     @State private var listEditorDraft = ""
+    @AppStorage(StickerEffectStyle.storageKey) private var stickerEffectStyleRawValue = StickerEffectStyle.defaultRawValue
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -143,12 +144,16 @@ struct AddRecipeView: View {
     private var currentOutlineImage: UIImage? {
         scanResultContainer?.outlineImage ?? initialOutlineImage
     }
+    private var stickerEffectStyle: StickerEffectStyle {
+        StickerEffectStyle(rawValue: stickerEffectStyleRawValue) ?? .defaultStyle
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 0) {
                     photoHeroSection
+                    stickerEffectPicker
                     aiUnavailableNotice
                     formContent
                 }
@@ -296,6 +301,27 @@ struct AddRecipeView: View {
         }
     }
 
+    @ViewBuilder
+    private var stickerEffectPicker: some View {
+        if viewModel.cutoutImageData != nil {
+            HStack(spacing: 12) {
+                Label("贴纸效果", systemImage: "wand.and.stars")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.bodyText)
+
+                Picker("贴纸效果", selection: $stickerEffectStyleRawValue) {
+                    ForEach(StickerEffectStyle.displayOrder) { style in
+                        Text(style.title)
+                            .tag(style.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+        }
+    }
+
     /// Hero 图片内容：有抠图时展示贴纸效果，否则展示普通满屏图片
     @ViewBuilder
     private var heroImageContent: some View {
@@ -309,6 +335,7 @@ struct AddRecipeView: View {
                 StickerImageView(
                     cutoutImage: cutoutUI,
                     outlineImage: currentOutlineImage,
+                    effectStyle: stickerEffectStyle,
                     maxWidth: UIScreen.main.bounds.width * 0.75,
                     maxHeight: 240
                 )

@@ -13,6 +13,7 @@ struct SettingsView: View {
     @Environment(\.requestReview) private var requestReview
     @Environment(\.modelContext) private var modelContext
     @AppStorage(AppearancePreference.storageKey) private var appearancePreferenceRawValue = AppearancePreference.defaultRawValue
+    @AppStorage(StickerEffectStyle.storageKey) private var stickerEffectStyleRawValue = StickerEffectStyle.defaultRawValue
     @AppStorage(AppLanguage.storageKey) private var languageRawValue = AppLanguage.current.rawValue
     @Query(sort: \Recipe.createdAt, order: .reverse) private var recipes: [Recipe]
     @State private var isTranslatingRecipes = false
@@ -28,6 +29,7 @@ struct SettingsView: View {
                 subscriptionSection
                 languageSection
                 appearanceSection
+                stickerEffectSection
                 supportSection
                 dataSection
                 legalSection
@@ -85,6 +87,21 @@ struct SettingsView: View {
             }
         } footer: {
             Text(currentAppearancePreference.description)
+        }
+    }
+
+    private var stickerEffectSection: some View {
+        Section {
+            Picker(selection: $stickerEffectStyleRawValue) {
+                ForEach(StickerEffectStyle.displayOrder) { style in
+                    Text(style.title)
+                        .tag(style.rawValue)
+                }
+            } label: {
+                Label("贴纸效果", systemImage: "wand.and.stars")
+            }
+        } footer: {
+            Text(currentStickerEffectStyle.description)
         }
     }
 
@@ -228,6 +245,10 @@ struct SettingsView: View {
 
     private var currentAppearancePreference: AppearancePreference {
         AppearancePreference(rawValue: appearancePreferenceRawValue) ?? .defaultPreference
+    }
+
+    private var currentStickerEffectStyle: StickerEffectStyle {
+        StickerEffectStyle(rawValue: stickerEffectStyleRawValue) ?? .defaultStyle
     }
 
     private var translationErrorPresented: Binding<Bool> {
